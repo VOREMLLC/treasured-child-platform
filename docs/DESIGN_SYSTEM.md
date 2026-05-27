@@ -203,9 +203,8 @@ Every reusable UI piece on the platform. Built once in
 ## 11. Logo usage
 
 The school logo is in [`assets/img/logo.png`](../assets/img/logo.png).
-It was decoded from the proprietor's demo file —
-`treasured_child_school_demo-2.html` — and is the canonical asset until
-a higher-resolution version is supplied.
+It is the canonical school logo asset until a higher-resolution version
+is supplied by the proprietor.
 
 - **Minimum size:** 32 px tall.
 - **Always on a white logo badge** in the dark theme. White circle / soft-corner square (14 px radius) with the logo centred. This keeps the logo readable on `--bg`.
