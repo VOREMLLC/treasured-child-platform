@@ -52,6 +52,12 @@ Each slice below has the same five fields:
 - **Test.** Run the frontend. The homepage opens in the browser and visibly shows: dark background, light text, rounded cards, tidy nav tabs, generous spacing, mobile-friendly at 360 px width. No clutter.
 - **Commit.** `feat(design-system): add dark dashboard tokens and homepage shell`
 
+### S0.3 — Next.js 14 + Tailwind scaffold
+- **Why now.** S1 and every later frontend slice add **routes and pages** to a Next.js app — the app has to exist first. Scaffolding it in isolation means each subsequent slice is "add a page or a component", not "set up the framework again".
+- **Builds.** `frontend/package.json` (Next.js 14, React 18, TypeScript, Tailwind 3); `frontend/tsconfig.json`; `frontend/next.config.mjs`; `frontend/tailwind.config.ts` mapping the design-system tokens (`--blue`, `--navy`, `--gold`, `--bg`, `--card`, etc.) to Tailwind utility classes via CSS custom properties; `frontend/postcss.config.mjs`; `frontend/src/app/layout.tsx` (root layout, loads `globals.css`, sets `<html>` to dark); `frontend/src/app/page.tsx` (minimal placeholder); `frontend/src/app/globals.css` (Tailwind directives + the design tokens); `frontend/public/logo.png` (copy of the school logo); `frontend/README.md` (how to run).
+- **Test.** `cd frontend && npm install` succeeds. `npm run dev` boots. Opening `http://localhost:3000` shows the placeholder page on the dark background with the design tokens applied (page background is `--bg`, body text is `--text`, fonts load).
+- **Commit.** `feat(frontend): scaffold Next.js 14 + Tailwind with design system tokens`
+
 ---
 
 ## 1. Public website slices
