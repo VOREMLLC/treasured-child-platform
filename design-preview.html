@@ -22,13 +22,13 @@
       <a href="#contact">Contact</a>
     </div>
     <div class="nav-cta">
-      <a class="btn btn-outline btn-sm hide-mobile" href="#login">Sign in</a>
+      <a class="btn btn-outline btn-sm hide-mobile" href="#login" data-action="signin">Sign in</a>
       <a class="btn btn-primary btn-sm" href="#apply">Apply now</a>
     </div>
   </nav>
 
   <!-- ===== Hero ===== -->
-  <header class="hero">
+  <header class="hero" id="about">
     <div class="hero-grid">
       <div>
         <span class="eyebrow"><span class="pip"></span>Treasured Child School, Orerokpe</span>
@@ -40,9 +40,9 @@
           anywhere in Nigeria.
         </p>
         <div class="hero-cta">
-          <a class="btn btn-primary" href="#apply">Apply for admission</a>
-          <a class="btn btn-gold" href="#pay">Pay fees online</a>
-          <a class="btn btn-outline" href="#portal">Student portal</a>
+          <a class="btn btn-primary" href="#apply" data-action="apply">Apply for admission</a>
+          <a class="btn btn-gold" href="#pay" data-action="pay">Pay fees online</a>
+          <a class="btn btn-outline" href="#portal" data-action="portal">Student portal</a>
         </div>
         <div class="hero-stats">
           <div class="stat"><b>From 18 to 200</b><span>learners since founding</span></div>
@@ -96,7 +96,7 @@
           <span class="pill">School · on campus</span>
           <h3 class="mt-1">JSS 1–3</h3>
           <p>The core academic years that prepare learners for BECE and senior secondary.</p>
-          <a class="more" href="#">Learn more</a>
+          <a class="more" href="#" data-action="programme" data-programme="JSS 1–3">Learn more</a>
         </div>
       </article>
       <article class="pcard">
@@ -105,7 +105,7 @@
           <span class="pill">Online · paid</span>
           <h3 class="mt-1">Common entrance &amp; BECE</h3>
           <p>Targeted online practice in maths, English and verbal reasoning with the AI tutor on hand.</p>
-          <a class="more" href="#">Learn more</a>
+          <a class="more" href="#" data-action="programme" data-programme="Common entrance & BECE">Learn more</a>
         </div>
       </article>
       <article class="pcard">
@@ -114,7 +114,7 @@
           <span class="pill pill-gold">Online · flagship</span>
           <h3 class="mt-1">AI &amp; data analytics</h3>
           <p>An accessible introduction to AI and data — designed for ages 12+. Project-based, with safety guardrails throughout.</p>
-          <a class="more" href="#">Learn more</a>
+          <a class="more" href="#" data-action="programme" data-programme="AI & data analytics">Learn more</a>
         </div>
       </article>
     </div>
@@ -128,8 +128,8 @@
       <p>Online application takes about three minutes. We'll be in touch within 48 hours.</p>
     </div>
     <div class="row" style="justify-content:center;">
-      <a class="btn btn-primary" href="#">Apply for admission</a>
-      <a class="btn btn-outline" href="#">Talk to admissions</a>
+      <a class="btn btn-primary" href="#" data-action="apply">Apply for admission</a>
+      <a class="btn btn-outline" href="#" data-action="contact">Talk to admissions</a>
     </div>
   </section>
 
@@ -145,25 +145,348 @@
       </div>
       <div>
         <h4>School</h4>
-        <a href="#">About</a>
-        <a href="#">Leadership</a>
-        <a href="#">Programmes</a>
+        <a href="#about">About</a>
+        <a href="#" data-action="info" data-info-title="Leadership" data-info-body="Founded by the proprietor and led by an experienced head teacher. Full leadership bios will appear here once the proprietor supplies copy and photos.">Leadership</a>
+        <a href="#programmes">Programmes</a>
       </div>
       <div>
         <h4>Online</h4>
-        <a href="#">BECE prep</a>
-        <a href="#">AI &amp; data</a>
-        <a href="#">Sign in</a>
+        <a href="#" data-action="programme" data-programme="Common entrance & BECE">BECE prep</a>
+        <a href="#" data-action="programme" data-programme="AI &amp; data analytics">AI &amp; data</a>
+        <a href="#" data-action="signin">Sign in</a>
       </div>
       <div>
         <h4>Contact</h4>
         <a href="mailto:hello@treasuredchild.example">hello@treasuredchild.example</a>
-        <a href="#">+234 — placeholder</a>
-        <a href="#">Pay fees online</a>
+        <a href="tel:+2348000000000">+234 — placeholder</a>
+        <a href="#" data-action="pay">Pay fees online</a>
       </div>
     </div>
     <p class="small">© Treasured Child School. Design preview — content is placeholder until the proprietor supplies copy and photos.</p>
   </footer>
+
+  <!-- ===== Modal ===== -->
+  <div class="modal-backdrop" id="modal-root" role="dialog" aria-modal="true" aria-labelledby="modal-title" hidden>
+    <div class="modal" role="document">
+      <button type="button" class="modal-close" aria-label="Close" data-modal-close>&times;</button>
+      <span class="modal-kicker" id="modal-kicker">Treasured Child</span>
+      <h3 id="modal-title">Title</h3>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+  (function () {
+    const root   = document.getElementById('modal-root');
+    const titleEl = document.getElementById('modal-title');
+    const kickerEl = document.getElementById('modal-kicker');
+    const bodyEl  = document.getElementById('modal-body');
+    const toast   = document.getElementById('toast');
+    let lastFocus = null;
+
+    function openModal({ kicker, title, html }) {
+      lastFocus = document.activeElement;
+      kickerEl.textContent = kicker || 'Treasured Child';
+      titleEl.textContent  = title;
+      bodyEl.innerHTML     = html;
+      root.classList.add('is-open');
+      root.removeAttribute('hidden');
+      document.body.classList.add('modal-open');
+      const focusable = root.querySelector('input, select, textarea, button, a[href]');
+      if (focusable) focusable.focus();
+    }
+
+    function closeModal() {
+      root.classList.remove('is-open');
+      root.setAttribute('hidden', '');
+      document.body.classList.remove('modal-open');
+      bodyEl.innerHTML = '';
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+    }
+
+    function showToast(msg) {
+      toast.textContent = msg;
+      toast.classList.add('is-show');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toast.classList.remove('is-show'), 2600);
+    }
+
+    // ----- Action handlers -----
+    const actions = {
+      apply() {
+        openModal({
+          kicker: 'Admissions',
+          title: 'Apply for admission',
+          html: `
+            <p>Tell us a little about your child and we will be in touch within 48 hours.</p>
+            <form id="apply-form" novalidate>
+              <div class="modal-field">
+                <label for="apply-parent">Parent / guardian name</label>
+                <input id="apply-parent" type="text" required autocomplete="name">
+              </div>
+              <div class="modal-field">
+                <label for="apply-child">Child's name &amp; age</label>
+                <input id="apply-child" type="text" required>
+              </div>
+              <div class="modal-field">
+                <label for="apply-level">Level</label>
+                <select id="apply-level" required>
+                  <option value="">Choose a level…</option>
+                  <option>Nursery</option>
+                  <option>Primary</option>
+                  <option>Junior secondary</option>
+                  <option>Senior secondary</option>
+                </select>
+              </div>
+              <div class="modal-field">
+                <label for="apply-email">Email</label>
+                <input id="apply-email" type="email" required autocomplete="email">
+              </div>
+              <div class="modal-field">
+                <label for="apply-phone">Phone</label>
+                <input id="apply-phone" type="tel" autocomplete="tel">
+              </div>
+              <div class="modal-actions">
+                <button type="submit" class="btn btn-primary btn-sm">Submit application</button>
+                <button type="button" class="btn btn-outline btn-sm" data-modal-close>Cancel</button>
+              </div>
+            </form>`
+        });
+        const form = document.getElementById('apply-form');
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          if (!form.checkValidity()) { form.reportValidity(); return; }
+          closeModal();
+          showToast('Application received — we will reply within 48 hours.');
+        });
+      },
+
+      pay() {
+        openModal({
+          kicker: 'Pay fees',
+          title: 'Pay fees online',
+          html: `
+            <p>Secure payment via Paystack. Enter your child's student ID (or use your registered email if you do not have one yet).</p>
+            <form id="pay-form" novalidate>
+              <div class="modal-field">
+                <label for="pay-id">Student ID or parent email</label>
+                <input id="pay-id" type="text" required>
+              </div>
+              <div class="modal-field">
+                <label for="pay-amount">Amount (₦)</label>
+                <input id="pay-amount" type="number" min="1000" step="100" placeholder="e.g. 75000" required>
+              </div>
+              <div class="modal-field">
+                <label for="pay-term">Term</label>
+                <select id="pay-term" required>
+                  <option value="">Choose a term…</option>
+                  <option>First term</option>
+                  <option>Second term</option>
+                  <option>Third term</option>
+                </select>
+              </div>
+              <div class="modal-actions">
+                <button type="submit" class="btn btn-gold btn-sm">Continue to Paystack</button>
+                <button type="button" class="btn btn-outline btn-sm" data-modal-close>Cancel</button>
+              </div>
+            </form>
+            <p class="small" style="margin-top:14px;color:var(--muted);font-size:12px;">
+              Preview only — no real charge is made. Paystack will be wired in production.
+            </p>`
+        });
+        const form = document.getElementById('pay-form');
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          if (!form.checkValidity()) { form.reportValidity(); return; }
+          closeModal();
+          showToast('Redirecting to Paystack… (preview)');
+        });
+      },
+
+      signin() {
+        openModal({
+          kicker: 'Sign in',
+          title: 'Sign in to your account',
+          html: `
+            <p>Parents, learners and staff sign in here.</p>
+            <form id="signin-form" novalidate>
+              <div class="modal-field">
+                <label for="signin-email">Email</label>
+                <input id="signin-email" type="email" required autocomplete="email">
+              </div>
+              <div class="modal-field">
+                <label for="signin-pass">Password</label>
+                <input id="signin-pass" type="password" required autocomplete="current-password">
+              </div>
+              <div class="modal-actions">
+                <button type="submit" class="btn btn-primary btn-sm">Sign in</button>
+                <button type="button" class="btn btn-outline btn-sm" data-modal-close>Cancel</button>
+              </div>
+            </form>
+            <p class="small" style="margin-top:14px;color:var(--muted);font-size:12px;">
+              Preview only — real authentication is not wired yet.
+            </p>`
+        });
+        const form = document.getElementById('signin-form');
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          if (!form.checkValidity()) { form.reportValidity(); return; }
+          closeModal();
+          showToast('Signed in (preview). The dashboard is coming soon.');
+        });
+      },
+
+      portal() {
+        openModal({
+          kicker: 'Student portal',
+          title: 'Student portal',
+          html: `
+            <p>Already enrolled? Sign in to see your courses, assignments and progress.</p>
+            <p>Not enrolled yet? Apply for admission or browse the online programmes first.</p>
+            <div class="modal-actions">
+              <button type="button" class="btn btn-primary btn-sm" data-action-relay="signin">Sign in</button>
+              <button type="button" class="btn btn-outline btn-sm" data-action-relay="apply">Apply instead</button>
+            </div>`
+        });
+      },
+
+      contact() {
+        openModal({
+          kicker: 'Admissions',
+          title: 'Talk to admissions',
+          html: `
+            <p>Send us a quick note and admissions will reply by email within one working day.</p>
+            <form id="contact-form" novalidate>
+              <div class="modal-field">
+                <label for="contact-name">Your name</label>
+                <input id="contact-name" type="text" required>
+              </div>
+              <div class="modal-field">
+                <label for="contact-email">Email</label>
+                <input id="contact-email" type="email" required>
+              </div>
+              <div class="modal-field">
+                <label for="contact-msg">How can we help?</label>
+                <textarea id="contact-msg" rows="4" required></textarea>
+              </div>
+              <div class="modal-actions">
+                <button type="submit" class="btn btn-primary btn-sm">Send message</button>
+                <a href="mailto:hello@treasuredchild.example" class="btn btn-outline btn-sm">Email us instead</a>
+              </div>
+            </form>`
+        });
+        const form = document.getElementById('contact-form');
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          if (!form.checkValidity()) { form.reportValidity(); return; }
+          closeModal();
+          showToast('Message sent — we will get back to you soon.');
+        });
+      },
+
+      programme(_, trigger) {
+        const name = trigger && trigger.dataset.programme || 'Programme';
+        const details = {
+          'JSS 1–3': {
+            kicker: 'On campus · Junior secondary',
+            body: `<p>Our core academic years (ages 10–13). JSS learners take English, mathematics, basic science, social studies, agricultural science, creative arts and digital literacy.</p>
+                   <p>Class sizes are kept small so each learner is known by name. Termly reports go to parents, and BECE preparation is built into JSS 3.</p>
+                   <div class="modal-actions">
+                     <button type="button" class="btn btn-primary btn-sm" data-action-relay="apply">Apply for JSS</button>
+                     <button type="button" class="btn btn-outline btn-sm" data-action-relay="contact">Talk to admissions</button>
+                   </div>`
+          },
+          'Common entrance & BECE': {
+            kicker: 'Online · paid',
+            body: `<p>Targeted exam-prep for Common Entrance and BECE — mathematics, English, verbal reasoning and quantitative reasoning. Weekly mock tests, AI tutor on hand for stuck moments, parent-visible progress reports.</p>
+                   <p>Suitable for learners anywhere in Nigeria. Term-by-term pricing.</p>
+                   <div class="modal-actions">
+                     <button type="button" class="btn btn-primary btn-sm" data-action-relay="signin">Sign in to enrol</button>
+                     <button type="button" class="btn btn-outline btn-sm" data-action-relay="contact">Ask a question</button>
+                   </div>`
+          },
+          'AI & data analytics': {
+            kicker: 'Online · flagship',
+            body: `<p>An accessible introduction to AI and data analytics — designed for ages 12+. Project-based, with safety guardrails throughout. Learners build small portfolio projects (spreadsheets → charts → simple ML notebooks).</p>
+                   <p>Limited cohort sizes. Parental consent is required before a learner account is activated.</p>
+                   <div class="modal-actions">
+                     <button type="button" class="btn btn-primary btn-sm" data-action-relay="signin">Sign in to enrol</button>
+                     <button type="button" class="btn btn-outline btn-sm" data-action-relay="contact">Ask a question</button>
+                   </div>`
+          }
+        };
+        const d = details[name] || {
+          kicker: 'Programme',
+          body: `<p>Full details coming soon. Talk to admissions for current cohort dates.</p>
+                 <div class="modal-actions">
+                   <button type="button" class="btn btn-outline btn-sm" data-action-relay="contact">Talk to admissions</button>
+                 </div>`
+        };
+        openModal({ kicker: d.kicker, title: name, html: d.body });
+      },
+
+      info(_, trigger) {
+        const title = trigger.dataset.infoTitle || 'More info';
+        const body  = trigger.dataset.infoBody  || 'More information will appear here soon.';
+        openModal({ kicker: 'Treasured Child', title, html: `<p>${body}</p>` });
+      }
+    };
+
+    // ----- Delegated click handler -----
+    document.addEventListener('click', (e) => {
+      const closeBtn = e.target.closest('[data-modal-close]');
+      if (closeBtn) { e.preventDefault(); closeModal(); return; }
+
+      // Backdrop click closes modal
+      if (e.target === root) { closeModal(); return; }
+
+      // Relay buttons inside one modal can open another
+      const relay = e.target.closest('[data-action-relay]');
+      if (relay) {
+        const next = relay.dataset.actionRelay;
+        closeModal();
+        if (actions[next]) actions[next](e, relay);
+        return;
+      }
+
+      // Action-triggering anchors / buttons
+      const trigger = e.target.closest('[data-action]');
+      if (trigger) {
+        const action = trigger.dataset.action;
+        if (actions[action]) {
+          e.preventDefault();
+          actions[action](e, trigger);
+          return;
+        }
+      }
+
+      // Smooth scroll for in-page anchors; warn for dead "#" links
+      const link = e.target.closest('a[href]');
+      if (link) {
+        const href = link.getAttribute('href');
+        if (href === '#') {
+          e.preventDefault();
+          showToast('Coming soon.');
+          return;
+        }
+        if (href.startsWith('#') && href.length > 1) {
+          const target = document.getElementById(href.slice(1));
+          if (target) {
+            e.preventDefault();
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            history.replaceState(null, '', href);
+          }
+        }
+      }
+    });
+
+    // ESC closes modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && root.classList.contains('is-open')) closeModal();
+    });
+  })();
+  </script>
 
 </body>
 </html>
