@@ -1,0 +1,57 @@
+# ─────────────────────────────────────────────────────────────
+# Secrets — NEVER commit these. .env.example is the only one
+# allowed in git; it carries variable NAMES, never values.
+# ─────────────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─────────────────────────────────────────────────────────────
+# Python (FastAPI backend, agent runtime)
+# ─────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# ─────────────────────────────────────────────────────────────
+# Node / Next.js (frontend)
+# ─────────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+.turbo/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─────────────────────────────────────────────────────────────
+# Editors & operating-system noise
+# ─────────────────────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ─────────────────────────────────────────────────────────────
+# Logs and local databases
+# ─────────────────────────────────────────────────────────────
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# ─────────────────────────────────────────────────────────────
+# Coverage / test artifacts
+# ─────────────────────────────────────────────────────────────
+.coverage
+htmlcov/
+coverage.xml
