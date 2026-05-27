@@ -1,59 +1,16 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Nav } from "@/components/Nav";
+import { Footer } from "@/components/Footer";
+import { SectionHead } from "@/components/SectionHead";
 
 export default function Home() {
   return (
     <>
-      {/* ===== Public nav ===== */}
-      <nav
-        aria-label="Primary"
-        className="sticky top-0 z-40 flex items-center justify-between px-[6vw] py-3.5 backdrop-blur-md border-b border-line bg-[rgba(10,22,38,0.85)]"
-      >
-        <Link href="/" className="flex items-center gap-3">
-          <span className="bg-white rounded-[14px] shadow-s p-1.5 inline-flex">
-            <Image
-              src="/logo.png"
-              alt="Treasured Child School logo"
-              width={36}
-              height={36}
-              className="object-contain"
-              priority
-            />
-          </span>
-          <span className="font-display font-bold text-paper text-[17px] leading-none">
-            Treasured Child
-            <small className="block font-body font-semibold text-[9.5px] tracking-[0.16em] uppercase text-gold pt-1">
-              Nursery · primary · secondary
-            </small>
-          </span>
-        </Link>
-
-        <div className="hidden md:flex gap-7 text-[15px] font-medium text-muted">
-          <a href="#about" className="hover:text-blue-soft transition">About</a>
-          <a href="#programmes" className="hover:text-blue-soft transition">Programmes</a>
-          <a href="#why" className="hover:text-blue-soft transition">Why us</a>
-          <a href="#contact" className="hover:text-blue-soft transition">Contact</a>
-        </div>
-
-        <div className="flex gap-2.5">
-          <Link
-            href="/login"
-            className="hidden md:inline-flex items-center px-4 py-2 rounded-pill border border-line text-paper text-[13.5px] font-semibold hover:border-blue-bright transition"
-          >
-            Sign in
-          </Link>
-          <Link
-            href="/apply"
-            className="inline-flex items-center px-4 py-2 rounded-pill bg-gradient-to-b from-blue to-blue-deep text-white text-[13.5px] font-semibold shadow-[0_10px_24px_-10px_rgba(31,99,201,0.55)] hover:from-blue-bright hover:to-blue transition"
-          >
-            Apply now
-          </Link>
-        </div>
-      </nav>
+      <Nav />
 
       {/* ===== Hero ===== */}
       <header
-        id="about"
         className="px-[6vw] pt-[70px] pb-[84px]"
         style={{
           background:
@@ -213,54 +170,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ===== Footer ===== */}
-      <footer
-        id="contact"
-        className="bg-surface border-t border-line px-[6vw] py-12 text-muted text-[14px]"
-      >
-        <div className="grid grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr_1fr] gap-8 max-w-[1180px] mx-auto">
-          <div>
-            <Link href="/" className="flex items-center gap-3 mb-3.5">
-              <span className="bg-white rounded-[14px] shadow-s p-1.5 inline-flex">
-                <Image src="/logo.png" alt="" width={36} height={36} />
-              </span>
-              <span className="font-display font-bold text-paper text-[17px] leading-none">
-                Treasured Child
-                <small className="block font-body font-semibold text-[9.5px] tracking-[0.16em] uppercase text-gold pt-1">
-                  Nursery · primary · secondary
-                </small>
-              </span>
-            </Link>
-            <p>Orerokpe, Delta State, Nigeria.</p>
-          </div>
-          <FooterCol title="School">
-            <FooterLink href="/about">About</FooterLink>
-            <FooterLink href="/about#leadership">Leadership</FooterLink>
-            <FooterLink href="/programmes">Programmes</FooterLink>
-          </FooterCol>
-          <FooterCol title="Online">
-            <FooterLink href="/programmes/bece-prep">BECE prep</FooterLink>
-            <FooterLink href="/programmes/ai-data">AI &amp; data</FooterLink>
-            <FooterLink href="/login">Sign in</FooterLink>
-          </FooterCol>
-          <FooterCol title="Contact">
-            <FooterLink href="mailto:hello@treasuredchild.example">
-              hello@treasuredchild.example
-            </FooterLink>
-            <FooterLink href="tel:+2348000000000">+234 — placeholder</FooterLink>
-            <FooterLink href="/pay">Pay fees online</FooterLink>
-          </FooterCol>
-        </div>
-        <p className="border-t border-line mt-7 pt-4 text-center text-[12.5px] text-muted">
-          © Treasured Child School. Content is placeholder until the
-          proprietor supplies copy and photos.
-        </p>
-      </footer>
+      <Footer />
     </>
   );
 }
 
-/* ---- Small inline components used by the page ---- */
+/* ---- Page-specific helpers (only used on this page) ---- */
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
@@ -269,28 +184,6 @@ function Stat({ value, label }: { value: string; label: string }) {
         {value}
       </b>
       <span className="text-[12.5px] text-muted">{label}</span>
-    </div>
-  );
-}
-
-function SectionHead({
-  kicker,
-  heading,
-  sub,
-}: {
-  kicker: string;
-  heading: string;
-  sub: string;
-}) {
-  return (
-    <div className="text-center mb-10">
-      <span className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.22em] text-gold">
-        {kicker}
-      </span>
-      <h2 className="font-display font-semibold text-paper text-[clamp(27px,4vw,40px)] mt-2">
-        {heading}
-      </h2>
-      <p className="text-muted max-w-[540px] mx-auto mt-2">{sub}</p>
     </div>
   );
 }
@@ -360,43 +253,5 @@ function ProgrammeCard({
         </a>
       </div>
     </article>
-  );
-}
-
-function FooterCol({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <h4 className="font-display text-[14px] text-paper mb-3 font-semibold">
-        {title}
-      </h4>
-      {children}
-    </div>
-  );
-}
-
-function FooterLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
-  if (href.startsWith("/")) {
-    return (
-      <Link href={href} className="block py-1 hover:text-blue-soft transition">
-        {children}
-      </Link>
-    );
-  }
-  return (
-    <a href={href} className="block py-1 hover:text-blue-soft transition">
-      {children}
-    </a>
   );
 }
