@@ -1,0 +1,55 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens.
+   Mirrored in assets/css/design-system.css for the static preview.
+   When you change a value here, change it there too — or retire the
+   static preview when this file becomes the only home page surface. */
+:root {
+  /* Brand blues */
+  --blue:         #1f63c9;
+  --blue-deep:    #164a96;
+  --navy:         #10395f;
+  --blue-bright:  #2f7fd4;
+  --blue-soft:    #6aa6e6;
+
+  /* Accent gold */
+  --gold:         #efb700;
+  --gold-deep:    #b88a00;
+
+  /* Dark surfaces */
+  --bg:           #0a1626;
+  --surface:      #0f2236;
+  --card:         #142a44;
+  --line:         #274468;
+
+  /* Foregrounds */
+  --text:         #e8eef7;
+  --muted:        #9fb3cd;
+  --ink:          #20262a;
+
+  /* Semantic */
+  --success:      #19a86b;
+  --danger:       #d24a4a;
+  --warning:      #d99a1c;
+  --info:         #3b8ad9;
+
+  /* Typography */
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body:    "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+}
