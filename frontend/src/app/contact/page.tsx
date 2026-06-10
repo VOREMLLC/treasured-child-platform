@@ -49,13 +49,13 @@ export default function Contact() {
             kicker="Call us"
             heading={
               <a
-                href="tel:+2348000000000"
+                href="tel:+2347035918488"
                 className="hover:text-blue-soft transition"
               >
-                +234 — placeholder
+                +234 703 591 8488
               </a>
             }
-            body="Real number to be confirmed by the proprietor."
+            body="Direct line to the school office."
           />
           <DetailCard
             kicker="Email us"

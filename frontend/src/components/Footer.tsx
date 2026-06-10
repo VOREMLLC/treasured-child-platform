@@ -29,7 +29,7 @@ export function Footer() {
           <FooterLink href="mailto:hello@treasuredchild.example">
             hello@treasuredchild.example
           </FooterLink>
-          <FooterLink href="tel:+2348000000000">+234 — placeholder</FooterLink>
+          <FooterLink href="tel:+2347035918488">+234 703 591 8488</FooterLink>
           <FooterLink href="/pay">Pay fees online</FooterLink>
         </FooterCol>
       </div>
