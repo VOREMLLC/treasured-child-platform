@@ -34,7 +34,7 @@ Each entry has four fields:
 
 | Feature | Module | Proof | Date verified |
 |---|---|---|---|
-| _(none yet — this is the start of the project)_ | — | — | — |
+| The backend boots and `GET /healthz` returns `{"ok": true}` | backend (foundation) | `backend/tests/test_healthz.py::test_healthz_returns_ok_true` | 2026-06-10 |
 
 ---
 

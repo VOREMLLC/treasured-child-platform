@@ -1,0 +1,28 @@
+# Treasured Child backend — pinned dependencies.
+# Production runtime targets Python 3.12 per CLAUDE.md; v1 development
+# runs on the locally-installed Python 3.9. All packages below support
+# both. See README.md for the deviation note.
+
+# --- Web framework ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# --- Database & migrations ---
+sqlalchemy==2.0.36
+alembic==1.14.0
+
+# --- Config / env ---
+pydantic==2.10.4
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+
+# --- Postgres driver (production) ---
+# psycopg3 supports SQLAlchemy 2's postgresql+psycopg dialect.
+# Local SQLite dev does not need this driver, but pinning it here means
+# `pip install -r requirements.txt` produces an environment that can talk
+# to production without re-running install.
+psycopg[binary]==3.2.3
+
+# --- Tests ---
+pytest==8.3.4
+httpx==0.28.1
