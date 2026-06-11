@@ -80,6 +80,11 @@ Each entry has four fields:
 | `POST /payments/webhook/paystack` with an amount mismatch marks the Payment failed | enrolment / backend | `backend/tests/test_payments_webhook.py::test_webhook_amount_mismatch_marks_payment_failed` | 2026-06-11 |
 | `POST /payments/webhook/paystack` with an unknown reference returns 200 (ack) and changes nothing | enrolment / backend | `backend/tests/test_payments_webhook.py::test_webhook_unknown_reference_acknowledged_no_change` | 2026-06-11 |
 | `POST /payments/webhook/paystack` with a non-`charge.success` event returns 200 (ack) and changes nothing | enrolment / backend | `backend/tests/test_payments_webhook.py::test_webhook_non_charge_success_event_acknowledged_no_change` | 2026-06-11 |
+| `POST /payments/verify` on a successful payment sends exactly one receipt email containing date, ₦ amount, purpose, and reference | notifications / backend | `backend/tests/test_payments.py::test_verify_success_sends_one_receipt_email_with_correct_content` | 2026-06-11 |
+| `POST /payments/verify` replayed on the same success does not send a second receipt | notifications / backend | `backend/tests/test_payments.py::test_verify_replayed_does_not_send_duplicate_receipt` | 2026-06-11 |
+| `POST /payments/verify` on a failed payment (amount mismatch) sends NO receipt | notifications / backend | `backend/tests/test_payments.py::test_verify_failed_payment_sends_no_receipt` | 2026-06-11 |
+| `POST /payments/webhook/paystack` with `charge.success` sends exactly one receipt email | notifications / backend | `backend/tests/test_payments_webhook.py::test_webhook_success_sends_one_receipt_email` | 2026-06-11 |
+| `POST /payments/webhook/paystack` replayed on the same success does not send a second receipt | notifications / backend | `backend/tests/test_payments_webhook.py::test_webhook_replayed_does_not_send_duplicate_receipt` | 2026-06-11 |
 
 ---
 

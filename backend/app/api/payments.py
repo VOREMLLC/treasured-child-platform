@@ -32,8 +32,13 @@ from app.schemas.payment import (
     PaymentResponse,
     PaymentVerifyRequest,
 )
+from app.services import email as email_service
 from app.services import paystack
-from app.services.fees import UnknownTargetError, compute_amount_kobo
+from app.services.fees import (
+    UnknownTargetError,
+    compute_amount_kobo,
+    get_programme_label,
+)
 from app.services.paystack import PaystackError
 
 router = APIRouter(prefix="/payments", tags=["payments"])
@@ -44,18 +49,23 @@ def _make_reference() -> str:
     return f"TCS-{secrets.token_urlsafe(12)}"
 
 
-def _apply_paystack_result(payment: Payment, body: dict[str, Any]) -> None:
+def _apply_paystack_result(
+    payment: Payment, body: dict[str, Any], db: Session
+) -> None:
     """Update a Payment from a Paystack verify-response or webhook body.
 
     Idempotent: if ``payment.status`` is already ``success`` this is a
-    no-op (no DB writes, no timestamp churn, no raw_response overwrite).
+    no-op (no DB writes, no timestamp churn, no raw_response overwrite,
+    no receipt email).
 
     Otherwise: sets ``verified_at`` to now, stores the raw response, and
     transitions ``status``:
       - Paystack reports ``data.status == "success"`` AND amount matches
-        the server-recorded ``amount_kobo`` → ``success``.
+        the server-recorded ``amount_kobo`` → ``success``. A receipt
+        email is sent (S13).
       - Anything else (Paystack-failed, partial pay, missing fields) →
-        ``failed``. Access is never granted on ``failed``.
+        ``failed``. Access is never granted on ``failed`` and no email
+        is sent.
     """
     if payment.status is PaymentStatus.success:
         return
@@ -73,8 +83,53 @@ def _apply_paystack_result(payment: Payment, body: dict[str, Any]) -> None:
         and paystack_amount == payment.amount_kobo
     ):
         payment.status = PaymentStatus.success
+        _send_receipt(payment, db)
     else:
         payment.status = PaymentStatus.failed
+
+
+def _send_receipt(payment: Payment, db: Session) -> None:
+    """Send one receipt email to the payer.
+
+    Called exactly once per Payment, at the moment ``status``
+    transitions from ``pending`` / ``failed`` to ``success``. Because
+    :func:`_apply_paystack_result` short-circuits on already-success,
+    no duplicate receipt is ever sent for the same Payment row.
+
+    A missing User (shouldn't happen — FK is RESTRICT) silently skips
+    the email rather than crashing the verify/webhook path.
+    """
+    user = db.get(User, payment.payer_id)
+    if user is None:
+        return
+
+    naira = f"₦{payment.amount_kobo / 100:,.2f}"  # ₦
+    if payment.purpose is PaymentPurpose.fees:
+        purpose_label = "Term fees"
+    else:
+        programme_name = get_programme_label(payment.target or "")
+        purpose_label = f"Programme: {programme_name}"
+
+    date_str = (
+        payment.verified_at.strftime("%d %b %Y, %H:%M UTC")
+        if payment.verified_at
+        else "—"
+    )
+
+    email_service.send_email(
+        to=user.email,
+        subject=f"Treasured Child School — receipt for {naira}",
+        body=(
+            f"Hi {user.name},\n\n"
+            f"Thank you for your payment.\n\n"
+            f"  Amount:    {naira}\n"
+            f"  For:       {purpose_label}\n"
+            f"  Reference: {payment.reference}\n"
+            f"  Date:      {date_str}\n\n"
+            f"Keep this reference for your records.\n\n"
+            f"— Treasured Child School\n"
+        ),
+    )
 
 
 # ─────────────────────────────────────────────────────────────
@@ -190,7 +245,7 @@ def verify_payment(
         # leak why; just signal failure to the caller.
         raise _GENERIC_VERIFY_FAILURE
 
-    _apply_paystack_result(payment, body)
+    _apply_paystack_result(payment, body, db)
     db.commit()
     db.refresh(payment)
     return payment
@@ -257,6 +312,6 @@ async def paystack_webhook(
         # Either way: acknowledge and move on.
         return {"ok": True}
 
-    _apply_paystack_result(payment, body)
+    _apply_paystack_result(payment, body, db)
     db.commit()
     return {"ok": True}

@@ -6,6 +6,7 @@ import pytest
 
 from app.models.payment import Payment, PaymentPurpose, PaymentStatus
 from app.models.user import User, UserRole, UserStatus
+from app.services import email as email_service
 from app.services.fees import FEES_KOBO, PROGRAMME_PRICES_KOBO
 from app.services.security import hash_password
 
@@ -229,3 +230,67 @@ def test_verify_is_idempotent_on_already_success(
     assert second.json()["status"] == "success"
     # The mock is NOT called a second time — idempotent.
     assert mock_verify.call_count == 1
+
+
+# ─────────────────────────────────────────────────────────────
+# S13 — receipt email on verified payment
+# ─────────────────────────────────────────────────────────────
+
+
+@patch("app.api.payments.paystack.verify_transaction")
+def test_verify_success_sends_one_receipt_email_with_correct_content(
+    mock_verify, payer_client, db_session
+):
+    init = payer_client.post(
+        "/payments/initialize", json={"purpose": "fees"}
+    )
+    ref = init.json()["reference"]
+    mock_verify.return_value = _paystack_success(ref, FEES_KOBO)
+
+    payer_client.post("/payments/verify", json={"reference": ref})
+
+    outbox = email_service.get_outbox()
+    assert len(outbox) == 1
+    email = outbox[0]
+    assert email.to == "payer@example.com"
+    assert "receipt" in email.subject.lower()
+    # Receipt body must contain the four facts BUILD_PLAN S13 names:
+    # date (via verified_at), ₦ amount, purpose, reference.
+    assert "₦125,000.00" in email.body
+    assert ref in email.body
+    assert "Term fees" in email.body
+
+
+@patch("app.api.payments.paystack.verify_transaction")
+def test_verify_replayed_does_not_send_duplicate_receipt(
+    mock_verify, payer_client, db_session
+):
+    init = payer_client.post(
+        "/payments/initialize", json={"purpose": "fees"}
+    )
+    ref = init.json()["reference"]
+    mock_verify.return_value = _paystack_success(ref, FEES_KOBO)
+
+    payer_client.post("/payments/verify", json={"reference": ref})
+    assert len(email_service.get_outbox()) == 1
+
+    payer_client.post("/payments/verify", json={"reference": ref})
+    # Still exactly one — BUILD_PLAN S13 guarantees 'one receipt per
+    # Payment success, never two'.
+    assert len(email_service.get_outbox()) == 1
+
+
+@patch("app.api.payments.paystack.verify_transaction")
+def test_verify_failed_payment_sends_no_receipt(
+    mock_verify, payer_client, db_session
+):
+    init = payer_client.post(
+        "/payments/initialize", json={"purpose": "fees"}
+    )
+    ref = init.json()["reference"]
+    # Amount mismatch → status=failed, no receipt.
+    mock_verify.return_value = _paystack_success(ref, amount=100)
+
+    payer_client.post("/payments/verify", json={"reference": ref})
+
+    assert email_service.get_outbox() == []

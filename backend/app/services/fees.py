@@ -25,6 +25,17 @@ PROGRAMME_PRICES_KOBO: dict[str, int] = {
     "ai-data": 3_500_000,    # ₦35,000
 }
 
+# Display labels shown in receipts and emails. Keyed by programme slug.
+PROGRAMME_LABELS: dict[str, str] = {
+    "bece-prep": "BECE / Common entrance prep",
+    "ai-data": "AI & data analytics",
+}
+
+
+def get_programme_label(slug: str) -> str:
+    """Display name for a programme slug — falls back to the slug itself."""
+    return PROGRAMME_LABELS.get(slug, slug)
+
 
 class UnknownTargetError(ValueError):
     """Raised when a programme slug isn't in the price table."""

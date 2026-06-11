@@ -10,6 +10,7 @@ import pytest
 from app.core.config import settings
 from app.models.payment import Payment, PaymentPurpose, PaymentStatus
 from app.models.user import User, UserRole, UserStatus
+from app.services import email as email_service
 from app.services.fees import FEES_KOBO
 from app.services.security import hash_password
 
@@ -220,3 +221,34 @@ def test_webhook_non_charge_success_event_acknowledged_no_change(
     assert response.status_code == 200
     db_session.refresh(pending_payment)
     assert pending_payment.status is PaymentStatus.pending
+
+
+# ─────────────────────────────────────────────────────────────
+# S13 — receipt email behavior on webhook path
+# ─────────────────────────────────────────────────────────────
+
+
+def test_webhook_success_sends_one_receipt_email(
+    client, db_session, pending_payment, payer
+):
+    body = _build_event_body(pending_payment.reference, FEES_KOBO)
+
+    _post_webhook(client, body)
+
+    outbox = email_service.get_outbox()
+    assert len(outbox) == 1
+    assert outbox[0].to == payer.email
+    assert pending_payment.reference in outbox[0].body
+
+
+def test_webhook_replayed_does_not_send_duplicate_receipt(
+    client, db_session, pending_payment
+):
+    body = _build_event_body(pending_payment.reference, FEES_KOBO)
+
+    _post_webhook(client, body)
+    assert len(email_service.get_outbox()) == 1
+
+    _post_webhook(client, body)
+    # Still exactly one — replay is idempotent on email too.
+    assert len(email_service.get_outbox()) == 1
