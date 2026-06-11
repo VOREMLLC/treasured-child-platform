@@ -49,6 +49,12 @@ Each entry has four fields:
 | `POST /auth/refresh` with a valid refresh cookie rotates both access and refresh tokens | auth / backend | `backend/tests/test_auth_login.py::test_refresh_with_valid_refresh_cookie_rotates_both_tokens` | 2026-06-11 |
 | `POST /auth/refresh` without a refresh cookie returns 401 | auth / backend | `backend/tests/test_auth_login.py::test_refresh_without_any_cookie_returns_401` | 2026-06-11 |
 | `POST /auth/logout` clears both cookies and subsequent `/auth/refresh` returns 401 | auth / backend | `backend/tests/test_auth_login.py::test_logout_returns_200_and_clears_cookies` | 2026-06-11 |
+| `POST /auth/forgot-password` for a known email sends one reset email and creates one unconsumed token row | auth / backend | `backend/tests/test_auth_reset.py::test_forgot_password_for_known_email_sends_email_and_creates_token` | 2026-06-11 |
+| `POST /auth/forgot-password` for an unknown email returns a **byte-identical** response (no enumeration leak) | auth / backend | `backend/tests/test_auth_reset.py::test_forgot_password_for_unknown_email_returns_identical_response` | 2026-06-11 |
+| `POST /auth/reset-password` with a valid token updates the user's password (verifies new, rejects old) and consumes the token | auth / backend | `backend/tests/test_auth_reset.py::test_reset_with_valid_token_changes_password_and_consumes_token` | 2026-06-11 |
+| `POST /auth/reset-password` with an already-consumed token returns a generic 400 | auth / backend | `backend/tests/test_auth_reset.py::test_reset_with_consumed_token_returns_generic_400` | 2026-06-11 |
+| `POST /auth/reset-password` with an expired token returns the same generic 400 | auth / backend | `backend/tests/test_auth_reset.py::test_reset_with_expired_token_returns_generic_400` | 2026-06-11 |
+| `POST /auth/reset-password` with an unknown token returns the same generic 400 | auth / backend | `backend/tests/test_auth_reset.py::test_reset_with_unknown_token_returns_generic_400` | 2026-06-11 |
 
 ---
 

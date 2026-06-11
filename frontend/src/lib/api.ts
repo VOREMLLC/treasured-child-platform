@@ -184,3 +184,33 @@ export function postRefresh(): Promise<UserResponse> {
 export function postLogout(): Promise<{ ok: boolean }> {
   return postJson<{ ok: boolean }>("/auth/logout", {});
 }
+
+// ─────────────────────────────────────────────────────────────
+// Auth — password reset (POST /auth/forgot|reset-password) — S9
+// ─────────────────────────────────────────────────────────────
+
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  new_password: string;
+}
+
+export interface GenericOk {
+  ok: boolean;
+  detail?: string;
+}
+
+export function postForgotPassword(
+  payload: ForgotPasswordRequest,
+): Promise<GenericOk> {
+  return postJson<GenericOk>("/auth/forgot-password", payload);
+}
+
+export function postResetPassword(
+  payload: ResetPasswordRequest,
+): Promise<GenericOk> {
+  return postJson<GenericOk>("/auth/reset-password", payload);
+}
