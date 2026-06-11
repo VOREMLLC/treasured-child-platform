@@ -8,6 +8,7 @@ only defines the shape so the table exists and Alembic can manage it.
 import enum
 import uuid
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import DateTime, Enum, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -56,6 +57,8 @@ class User(Base):
         nullable=False,
         index=True,
     )
+    name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(
         Enum(UserRole, name="user_role"),

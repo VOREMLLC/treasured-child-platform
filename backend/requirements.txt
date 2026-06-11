@@ -31,6 +31,11 @@ email-validator==2.2.0
 # slowapi provides FastAPI-friendly Limiter decorators.
 slowapi==0.1.9
 
+# --- Password hashing ---
+# argon2-cffi is the canonical Python implementation of the argon2
+# password-hashing function (PHC winner). Used by app/services/security.py.
+argon2-cffi==23.1.0
+
 # --- Tests ---
 pytest==8.3.4
 httpx==0.28.1
