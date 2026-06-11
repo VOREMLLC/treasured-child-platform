@@ -35,6 +35,9 @@ Each entry has four fields:
 | Feature | Module | Proof | Date verified |
 |---|---|---|---|
 | The backend boots and `GET /healthz` returns `{"ok": true}` | backend (foundation) | `backend/tests/test_healthz.py::test_healthz_returns_ok_true` | 2026-06-10 |
+| `POST /applications` with a valid payload persists an Application row and sends 2 stubbed emails (parent + admin) | public_site / backend | `backend/tests/test_applications.py::test_valid_application_creates_row_and_sends_two_emails` | 2026-06-11 |
+| `POST /applications` with a missing required field returns 422 and writes nothing | public_site / backend | `backend/tests/test_applications.py::test_missing_required_field_returns_422_and_writes_nothing` | 2026-06-11 |
+| `POST /applications` with an invalid email returns 422 and writes nothing | public_site / backend | `backend/tests/test_applications.py::test_invalid_email_returns_422` | 2026-06-11 |
 
 ---
 
