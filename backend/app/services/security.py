@@ -10,6 +10,8 @@ login endpoint, and (later) the role-based access middleware without
 bringing the rest of the app along.
 """
 
+import hashlib
+import secrets
 import uuid as _uuid
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -105,3 +107,28 @@ def _encode(
         "type": token_type,
     }
     return jwt.encode(claims, settings.JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+# ─────────────────────────────────────────────────────────────
+# Password-reset tokens (S9)
+# ─────────────────────────────────────────────────────────────
+
+
+def generate_reset_token() -> str:
+    """Return a high-entropy URL-safe token.
+
+    32 bytes → ~256 bits of entropy → 43 url-safe-base64 characters.
+    The plaintext goes into the password-reset email URL exactly once;
+    the database only ever stores the SHA-256 hash.
+    """
+    return secrets.token_urlsafe(32)
+
+
+def hash_reset_token(token: str) -> str:
+    """SHA-256 hex digest of a reset token, suitable for DB lookup.
+
+    The token is already cryptographically random, so a fast hash is
+    appropriate (we don't need to defend against brute-force the way we
+    do for user passwords).
+    """
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

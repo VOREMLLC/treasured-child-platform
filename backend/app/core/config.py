@@ -59,5 +59,18 @@ class Settings(BaseSettings):
     JWT_ACCESS_TTL_MIN: int = Field(default=15)
     JWT_REFRESH_TTL_DAYS: int = Field(default=30)
 
+    # ---- Password reset (S9) ----
+    FRONTEND_URL: str = Field(
+        default="http://localhost:3000",
+        description=(
+            "Public-facing URL of the frontend. Used in password-reset "
+            "emails to construct the reset link."
+        ),
+    )
+    RESET_TOKEN_TTL_MIN: int = Field(
+        default=60,
+        description="Lifetime of a password-reset token in minutes.",
+    )
+
 
 settings = Settings()

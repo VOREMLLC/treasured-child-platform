@@ -6,6 +6,7 @@ Alembic and the engine can see the full schema.
 
 from app.models.application import Application, ApplicationStatus, ClassLevel
 from app.models.base import Base
+from app.models.password_reset import PasswordResetToken
 from app.models.user import User, UserRole, UserStatus
 
 __all__ = [
@@ -16,4 +17,5 @@ __all__ = [
     "Application",
     "ApplicationStatus",
     "ClassLevel",
+    "PasswordResetToken",
 ]

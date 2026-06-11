@@ -13,6 +13,7 @@ on Secure (set ``COOKIE_SECURE`` to True in the environment).
 """
 
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import (
@@ -33,13 +34,23 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.db.session import get_db
+from app.models.password_reset import PasswordResetToken
 from app.models.user import User, UserRole, UserStatus
-from app.schemas.user import LoginRequest, RegisterRequest, UserResponse
+from app.schemas.user import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+    UserResponse,
+)
+from app.services import email as email_service
 from app.services.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    generate_reset_token,
     hash_password,
+    hash_reset_token,
     verify_password,
 )
 
@@ -224,4 +235,121 @@ def refresh(
 def logout(response: Response) -> dict:
     """Clear access + refresh cookies. Always returns 200."""
     _clear_auth_cookies(response)
+    return {"ok": True}
+
+
+# ─────────────────────────────────────────────────────────────
+# POST /auth/forgot-password  (S9)
+# ─────────────────────────────────────────────────────────────
+
+
+_GENERIC_FORGOT_RESPONSE = {
+    "ok": True,
+    "detail": (
+        "If that email is registered, a reset link is on its way."
+    ),
+}
+
+
+@router.post("/forgot-password")
+@limiter.limit("5/minute")
+def forgot_password(
+    request: Request,  # noqa: ARG001
+    payload: ForgotPasswordRequest = Body(...),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Issue a single-use, time-limited password-reset token.
+
+    Always returns the same generic 200 body so an attacker cannot
+    enumerate registered emails. If the email matches an active or
+    pending account, a row is inserted into password_reset_tokens
+    (storing only the SHA-256 hash of the token) and an email is sent
+    via the stubbed sender with the plaintext token in the URL.
+    """
+    user = db.execute(
+        select(User).where(User.email == str(payload.email).lower())
+    ).scalar_one_or_none()
+
+    if user is not None:
+        token = generate_reset_token()
+        row = PasswordResetToken(
+            user_id=user.id,
+            token_hash=hash_reset_token(token),
+            expires_at=datetime.now(tz=timezone.utc)
+            + timedelta(minutes=settings.RESET_TOKEN_TTL_MIN),
+        )
+        db.add(row)
+        db.commit()
+
+        reset_link = (
+            f"{settings.FRONTEND_URL}/reset-password?token={token}"
+        )
+        email_service.send_email(
+            to=user.email,
+            subject="Treasured Child School — reset your password",
+            body=(
+                f"Hi {user.name},\n\n"
+                f"Use the link below to reset your password. It expires "
+                f"in {settings.RESET_TOKEN_TTL_MIN} minutes.\n\n"
+                f"{reset_link}\n\n"
+                f"If you didn't request this, you can ignore this email "
+                f"— your password is unchanged.\n\n"
+                f"— Treasured Child School\n"
+            ),
+        )
+
+    return _GENERIC_FORGOT_RESPONSE
+
+
+# ─────────────────────────────────────────────────────────────
+# POST /auth/reset-password  (S9)
+# ─────────────────────────────────────────────────────────────
+
+
+_GENERIC_RESET_FAILURE = HTTPException(
+    status_code=status.HTTP_400_BAD_REQUEST,
+    detail="That reset link is invalid or has expired.",
+)
+
+
+@router.post("/reset-password")
+@limiter.limit("10/minute")
+def reset_password(
+    request: Request,  # noqa: ARG001
+    payload: ResetPasswordRequest = Body(...),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Consume a reset token and set a new password.
+
+    Every failure path (bad token, expired token, already consumed)
+    returns the same generic 400 — no information about what went
+    wrong leaks to the caller.
+    """
+    token_hash = hash_reset_token(payload.token)
+    now = datetime.now(tz=timezone.utc)
+
+    row = db.execute(
+        select(PasswordResetToken).where(
+            PasswordResetToken.token_hash == token_hash
+        )
+    ).scalar_one_or_none()
+
+    if row is None or row.consumed_at is not None:
+        raise _GENERIC_RESET_FAILURE
+
+    # SQLite drops the tz on read; coerce to aware for comparison.
+    expires_at = row.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < now:
+        raise _GENERIC_RESET_FAILURE
+
+    user = db.get(User, row.user_id)
+    if user is None:
+        raise _GENERIC_RESET_FAILURE
+
+    user.password_hash = hash_password(payload.new_password)
+    row.consumed_at = now
+    db.commit()
+
     return {"ok": True}
