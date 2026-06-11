@@ -72,5 +72,13 @@ class Settings(BaseSettings):
         description="Lifetime of a password-reset token in minutes.",
     )
 
+    # ---- Paystack (S11) ----
+    PAYSTACK_SECRET_KEY: str = Field(default="sk_test_xxx")
+    PAYSTACK_PUBLIC_KEY: str = Field(default="pk_test_xxx")
+    PAYSTACK_API_URL: str = Field(
+        default="https://api.paystack.co",
+        description="Paystack API base URL. Don't include a trailing slash.",
+    )
+
 
 settings = Settings()
