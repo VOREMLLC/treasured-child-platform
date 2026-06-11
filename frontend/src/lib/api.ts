@@ -39,8 +39,14 @@ interface ErrorBody {
 }
 
 /**
- * Internal: POST JSON, expect 201, parse errors into ApiError. Used by
- * every public endpoint helper below.
+ * Internal: POST JSON, expect a 2xx, parse errors into ApiError. Used
+ * by every public endpoint helper below.
+ *
+ * `credentials: "include"` is required so the browser:
+ *   1. Accepts Set-Cookie from cross-origin responses (e.g. /auth/login
+ *      setting access_token + refresh_token on :8000 → :3000).
+ *   2. Sends those cookies back on subsequent requests.
+ * The backend's CORS middleware already has allow_credentials=True.
  */
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   let res: Response;
@@ -49,6 +55,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      credentials: "include",
     });
   } catch {
     throw new ApiError(
@@ -58,7 +65,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
     );
   }
 
-  if (res.status === 201) {
+  if (res.status >= 200 && res.status < 300) {
     return (await res.json()) as T;
   }
 
@@ -155,4 +162,25 @@ export function postRegister(
   payload: RegisterRequest,
 ): Promise<UserResponse> {
   return postJson<UserResponse>("/auth/register", payload);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Auth — login / refresh / logout (POST /auth/*) — S8
+// ─────────────────────────────────────────────────────────────
+
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export function postLogin(payload: LoginRequest): Promise<UserResponse> {
+  return postJson<UserResponse>("/auth/login", payload);
+}
+
+export function postRefresh(): Promise<UserResponse> {
+  return postJson<UserResponse>("/auth/refresh", {});
+}
+
+export function postLogout(): Promise<{ ok: boolean }> {
+  return postJson<{ ok: boolean }>("/auth/logout", {});
 }

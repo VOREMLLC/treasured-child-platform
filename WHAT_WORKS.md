@@ -42,6 +42,13 @@ Each entry has four fields:
 | `POST /auth/register` with a duplicate email returns 409 and leaves exactly one row | auth / backend | `backend/tests/test_auth.py::test_duplicate_email_returns_409` | 2026-06-11 |
 | `POST /auth/register` with a password shorter than 8 characters returns 422 and writes nothing | auth / backend | `backend/tests/test_auth.py::test_short_password_returns_422` | 2026-06-11 |
 | `POST /auth/register` with an invalid email returns 422 and writes nothing | auth / backend | `backend/tests/test_auth.py::test_invalid_email_returns_422` | 2026-06-11 |
+| `POST /auth/login` with the correct password for an active user sets httpOnly access + refresh cookies that decode to that user | auth / backend | `backend/tests/test_auth_login.py::test_login_with_correct_password_sets_cookies_and_returns_user` | 2026-06-11 |
+| `POST /auth/login` with the wrong password returns 401 with a generic "Invalid email or password." | auth / backend | `backend/tests/test_auth_login.py::test_login_with_wrong_password_returns_generic_401` | 2026-06-11 |
+| `POST /auth/login` for an unknown email returns the **same** generic 401 (no enumeration leak) | auth / backend | `backend/tests/test_auth_login.py::test_login_with_unknown_email_returns_same_generic_401` | 2026-06-11 |
+| `POST /auth/login` for a pending account returns the **same** generic 401 (no status leak) | auth / backend | `backend/tests/test_auth_login.py::test_login_for_pending_user_returns_same_generic_401` | 2026-06-11 |
+| `POST /auth/refresh` with a valid refresh cookie rotates both access and refresh tokens | auth / backend | `backend/tests/test_auth_login.py::test_refresh_with_valid_refresh_cookie_rotates_both_tokens` | 2026-06-11 |
+| `POST /auth/refresh` without a refresh cookie returns 401 | auth / backend | `backend/tests/test_auth_login.py::test_refresh_without_any_cookie_returns_401` | 2026-06-11 |
+| `POST /auth/logout` clears both cookies and subsequent `/auth/refresh` returns 401 | auth / backend | `backend/tests/test_auth_login.py::test_logout_returns_200_and_clears_cookies` | 2026-06-11 |
 
 ---
 
