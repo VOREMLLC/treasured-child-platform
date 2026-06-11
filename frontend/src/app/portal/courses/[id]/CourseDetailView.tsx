@@ -159,27 +159,29 @@ export function CourseDetailView({ courseId }: { courseId: string }) {
               </div>
               <ul className="divide-y divide-line/40">
                 {module.lessons.map((lesson) => (
-                  <li
-                    key={lesson.id}
-                    className="flex items-center gap-3 py-3"
-                  >
-                    <span
-                      aria-hidden
-                      className={
-                        "w-7 h-7 rounded-full border flex items-center justify-center text-[12px] font-semibold " +
-                        (lesson.completed
-                          ? "border-success bg-[rgba(25,168,107,0.16)] text-success"
-                          : "border-line text-muted")
-                      }
+                  <li key={lesson.id}>
+                    <Link
+                      href={`/portal/courses/${course.id}/lessons/${lesson.id}`}
+                      className="flex items-center gap-3 py-3 -mx-2 px-2 rounded hover:bg-page transition group"
                     >
-                      {lesson.completed ? "✓" : lesson.sort_order}
-                    </span>
-                    <span className="flex-1 text-paper text-[14.5px]">
-                      {lesson.title}
-                    </span>
-                    <span className="text-muted text-[12px]">
-                      {lesson.duration_min} min
-                    </span>
+                      <span
+                        aria-hidden
+                        className={
+                          "w-7 h-7 rounded-full border flex items-center justify-center text-[12px] font-semibold " +
+                          (lesson.completed
+                            ? "border-success bg-[rgba(25,168,107,0.16)] text-success"
+                            : "border-line text-muted group-hover:border-blue-bright group-hover:text-blue-soft")
+                        }
+                      >
+                        {lesson.completed ? "✓" : lesson.sort_order}
+                      </span>
+                      <span className="flex-1 text-paper text-[14.5px] group-hover:text-blue-soft transition">
+                        {lesson.title}
+                      </span>
+                      <span className="text-muted text-[12px]">
+                        {lesson.duration_min} min
+                      </span>
+                    </Link>
                   </li>
                 ))}
               </ul>
@@ -187,17 +189,20 @@ export function CourseDetailView({ courseId }: { courseId: string }) {
           ))}
         </div>
 
-        {/* Right column placeholder for S16 lesson viewer */}
-        <aside className="bg-card border border-line rounded-lg p-8 text-center min-h-[280px] grid place-items-center">
-          <div>
-            <div className="text-[12px] font-bold uppercase tracking-[0.22em] text-gold mb-3">
-              Lesson viewer
-            </div>
-            <p className="text-muted text-[14.5px] max-w-[280px] mx-auto">
-              Select a lesson from the list — the in-page lesson viewer
-              arrives in slice S16.
-            </p>
+        {/* Right column: quick start */}
+        <aside className="bg-card border border-line rounded-lg p-6">
+          <div className="text-[12px] font-bold uppercase tracking-[0.22em] text-gold mb-3">
+            Get started
           </div>
+          <p className="text-muted text-[14.5px] mb-4">
+            Click any lesson on the left to open it. Lessons render with
+            the in-page viewer and you can navigate between them with the
+            prev / next buttons.
+          </p>
+          <p className="text-muted text-[12.5px]">
+            Mark-complete + XP wire up in slice S17. The VOREM AI tutor
+            inside each lesson arrives in S23.
+          </p>
         </aside>
       </div>
     </>

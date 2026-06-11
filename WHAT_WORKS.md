@@ -97,6 +97,13 @@ Each entry has four fields:
 | `GET /courses/{id}` for a not-enrolled user returns 403 generic | courses / backend | `backend/tests/test_courses.py::test_course_detail_not_enrolled_returns_403` | 2026-06-11 |
 | `GET /courses/{id}` for an enrolled user returns the course with ordered modules and lessons | courses / backend | `backend/tests/test_courses.py::test_course_detail_enrolled_returns_modules_and_lessons` | 2026-06-11 |
 | `GET /courses/{unknown_uuid}` returns the SAME generic 403 as "not enrolled" (no id enumeration leak) | courses / backend | `backend/tests/test_courses.py::test_course_detail_unknown_id_returns_403_same_as_not_enrolled` | 2026-06-11 |
+| `GET /courses/{id}/lessons/{lid}` without a session returns 401 | courses / backend | `backend/tests/test_courses.py::test_lesson_view_without_session_returns_401` | 2026-06-11 |
+| `GET /courses/{id}/lessons/{lid}` for a not-enrolled user returns 403 generic | courses / backend | `backend/tests/test_courses.py::test_lesson_view_not_enrolled_returns_403` | 2026-06-11 |
+| `GET /courses/{id}/lessons/{lid}` for the first lesson returns content + module/course context + prev: null + next: L2 | courses / backend | `backend/tests/test_courses.py::test_lesson_view_first_lesson_has_no_prev` | 2026-06-11 |
+| `GET /courses/{id}/lessons/{lid}` for a middle lesson crossing module boundaries returns the correct prev/next | courses / backend | `backend/tests/test_courses.py::test_lesson_view_middle_lesson_has_both_neighbours_across_modules` | 2026-06-11 |
+| `GET /courses/{id}/lessons/{lid}` for the last lesson returns prev: L3 + next: null | courses / backend | `backend/tests/test_courses.py::test_lesson_view_last_lesson_has_no_next` | 2026-06-11 |
+| `GET /courses/{id}/lessons/{unknown}` returns 403 generic (no lesson-id enumeration leak) | courses / backend | `backend/tests/test_courses.py::test_lesson_view_unknown_lesson_id_returns_403` | 2026-06-11 |
+| `GET /courses/{id}/lessons/{lesson-in-other-course}` returns 403 generic (no cross-course peeking) | courses / backend | `backend/tests/test_courses.py::test_lesson_view_lesson_from_different_course_returns_403` | 2026-06-11 |
 
 ---
 

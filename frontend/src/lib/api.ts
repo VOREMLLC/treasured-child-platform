@@ -348,3 +348,39 @@ export function getMeCourses(): Promise<CourseListItem[]> {
 export function getCourse(courseId: string): Promise<CourseDetail> {
   return getJson<CourseDetail>(`/courses/${courseId}`);
 }
+
+// ─────────────────────────────────────────────────────────────
+// Lesson view (GET /courses/{course_id}/lessons/{lesson_id}) — S16
+// ─────────────────────────────────────────────────────────────
+
+export interface LessonNeighbor {
+  id: string;
+  title: string;
+}
+
+export interface LessonDetail {
+  id: string;
+  sort_order: number;
+  title: string;
+  content: string;
+  duration_min: number;
+  media_url: string | null;
+  completed: boolean;
+
+  course_id: string;
+  course_title: string;
+  module_id: string;
+  module_title: string;
+
+  prev: LessonNeighbor | null;
+  next: LessonNeighbor | null;
+}
+
+export function getLesson(
+  courseId: string,
+  lessonId: string,
+): Promise<LessonDetail> {
+  return getJson<LessonDetail>(
+    `/courses/${courseId}/lessons/${lessonId}`,
+  );
+}
