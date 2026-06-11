@@ -24,7 +24,7 @@ from sqlalchemy import (
     Uuid,
     func,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
@@ -72,6 +72,12 @@ class Course(Base):
         nullable=False,
     )
 
+    modules: Mapped[list["Module"]] = relationship(
+        "Module",
+        order_by="Module.sort_order",
+        cascade="all, delete-orphan",
+    )
+
     def __repr__(self) -> str:
         return (
             f"<Course id={self.id} slug={self.slug!r} "
@@ -102,6 +108,12 @@ class Module(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+
+    lessons: Mapped[list["Lesson"]] = relationship(
+        "Lesson",
+        order_by="Lesson.sort_order",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:
