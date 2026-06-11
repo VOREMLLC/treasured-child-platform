@@ -89,6 +89,14 @@ Each entry has four fields:
 | Re-running the demo seed is idempotent — no duplicates | courses / backend | `backend/tests/test_seed_demo.py::test_seed_is_idempotent_no_duplicates` | 2026-06-11 |
 | The seeded school course is `jss-1` (Junior secondary, free, published) | courses / backend | `backend/tests/test_seed_demo.py::test_seed_school_course_is_jss_1` | 2026-06-11 |
 | The seeded online course is `ai-data` (paid, ₦35,000 — matching `services/fees.py`) | courses / backend | `backend/tests/test_seed_demo.py::test_seed_online_course_is_ai_data_paid` | 2026-06-11 |
+| `GET /me/courses` without a session returns 401 | courses / backend | `backend/tests/test_courses.py::test_me_courses_without_session_returns_401` | 2026-06-11 |
+| `GET /me/courses` with no enrolments returns `[]` | courses / backend | `backend/tests/test_courses.py::test_me_courses_with_no_enrolments_returns_empty_list` | 2026-06-11 |
+| `GET /me/courses` only returns active enrolments (expired excluded) | courses / backend | `backend/tests/test_courses.py::test_me_courses_returns_only_active_enrolments` | 2026-06-11 |
+| `GET /me/courses` does not leak other users' enrolments | courses / backend | `backend/tests/test_courses.py::test_me_courses_excludes_other_users_enrolments` | 2026-06-11 |
+| `GET /courses/{id}` without a session returns 401 | courses / backend | `backend/tests/test_courses.py::test_course_detail_without_session_returns_401` | 2026-06-11 |
+| `GET /courses/{id}` for a not-enrolled user returns 403 generic | courses / backend | `backend/tests/test_courses.py::test_course_detail_not_enrolled_returns_403` | 2026-06-11 |
+| `GET /courses/{id}` for an enrolled user returns the course with ordered modules and lessons | courses / backend | `backend/tests/test_courses.py::test_course_detail_enrolled_returns_modules_and_lessons` | 2026-06-11 |
+| `GET /courses/{unknown_uuid}` returns the SAME generic 403 as "not enrolled" (no id enumeration leak) | courses / backend | `backend/tests/test_courses.py::test_course_detail_unknown_id_returns_403_same_as_not_enrolled` | 2026-06-11 |
 
 ---
 

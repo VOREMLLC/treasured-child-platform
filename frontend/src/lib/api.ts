@@ -39,6 +39,39 @@ interface ErrorBody {
 }
 
 /**
+ * Internal: GET JSON, expect a 2xx, parse errors into ApiError. Used
+ * by every authenticated read endpoint helper below.
+ */
+async function getJson<T>(path: string): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method: "GET",
+      credentials: "include",
+    });
+  } catch {
+    throw new ApiError(
+      0,
+      [],
+      "Could not reach the server. Please check your connection.",
+    );
+  }
+
+  if (res.status >= 200 && res.status < 300) {
+    return (await res.json()) as T;
+  }
+
+  const errBody = (await res.json().catch(() => ({}))) as ErrorBody;
+  let topMessage = "Something went wrong. Please try again.";
+  if (res.status === 401) topMessage = "Please sign in to continue.";
+  else if (res.status === 403) topMessage = "You don't have access to this.";
+  else if (res.status === 404) topMessage = "Not found.";
+  else if (typeof errBody.detail === "string") topMessage = errBody.detail;
+
+  throw new ApiError(res.status, [], topMessage);
+}
+
+/**
  * Internal: POST JSON, expect a 2xx, parse errors into ApiError. Used
  * by every public endpoint helper below.
  *
@@ -264,4 +297,54 @@ export function postPaymentsVerify(
   payload: PaymentVerifyRequest,
 ): Promise<PaymentResponse> {
   return postJson<PaymentResponse>("/payments/verify", payload);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Courses (GET /me/courses, /courses/{id}) — S15
+// ─────────────────────────────────────────────────────────────
+
+export type CourseType = "school" | "online";
+
+export interface CourseListItem {
+  id: string;
+  slug: string;
+  title: string;
+  type: CourseType;
+  level: string;
+  summary: string;
+  is_paid: boolean;
+}
+
+export interface LessonRead {
+  id: string;
+  sort_order: number;
+  title: string;
+  duration_min: number;
+  completed: boolean;
+}
+
+export interface ModuleRead {
+  id: string;
+  sort_order: number;
+  title: string;
+  lessons: LessonRead[];
+}
+
+export interface CourseDetail {
+  id: string;
+  slug: string;
+  title: string;
+  type: CourseType;
+  level: string;
+  summary: string;
+  is_paid: boolean;
+  modules: ModuleRead[];
+}
+
+export function getMeCourses(): Promise<CourseListItem[]> {
+  return getJson<CourseListItem[]>("/me/courses");
+}
+
+export function getCourse(courseId: string): Promise<CourseDetail> {
+  return getJson<CourseDetail>(`/courses/${courseId}`);
 }
