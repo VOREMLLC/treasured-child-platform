@@ -23,6 +23,14 @@ python-dotenv==1.0.1
 # to production without re-running install.
 psycopg[binary]==3.2.3
 
+# --- Validation helpers ---
+# email-validator backs Pydantic EmailStr.
+email-validator==2.2.0
+
+# --- Rate limiting ---
+# slowapi provides FastAPI-friendly Limiter decorators.
+slowapi==0.1.9
+
 # --- Tests ---
 pytest==8.3.4
 httpx==0.28.1

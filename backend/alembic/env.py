@@ -12,10 +12,10 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-# These imports register the models with Base.metadata.
+# These imports register every model with Base.metadata.
 from app.core.config import settings
 from app.models.base import Base
-from app.models import user as _user  # noqa: F401  # registers User on Base
+import app.models  # noqa: F401  # registers all models on Base
 
 # Alembic Config object — gives access to the values in alembic.ini.
 config = context.config

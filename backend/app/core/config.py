@@ -5,6 +5,10 @@ dev). Values are validated once at startup; access them via
 ``from app.core.config import settings``.
 """
 
+from __future__ import annotations
+
+from typing import List
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -33,6 +37,21 @@ class Settings(BaseSettings):
             "Production sets this to a Postgres URL "
             "(e.g. postgresql+psycopg://user:pass@host:5432/treasured_child)."
         ),
+    )
+
+    # ---- CORS ----
+    CORS_ORIGINS: List[str] = Field(
+        default=["http://localhost:3000"],
+        description=(
+            "Allowed Origins for browser CORS. Frontend dev server runs "
+            "on http://localhost:3000."
+        ),
+    )
+
+    # ---- Email ----
+    ADMIN_EMAIL: str = Field(
+        default="admissions@treasuredchild.example",
+        description="Inbox that receives admission application notifications.",
     )
 
     # ---- Auth (used by S7+; declared early so .env is validated) ----
