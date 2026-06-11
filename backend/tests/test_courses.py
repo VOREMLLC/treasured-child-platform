@@ -220,3 +220,167 @@ def test_course_detail_unknown_id_returns_403_same_as_not_enrolled(
     response = student_client.get(f"/courses/{fake_id}")
     assert response.status_code == 403
     assert response.json() == {"detail": "Forbidden."}
+
+
+# ─────────────────────────────────────────────────────────────
+# S16 — /courses/{course_id}/lessons/{lesson_id}
+# ─────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def two_module_course(db_session):
+    """A course with 2 modules x 2 lessons = 4 lessons in linear order."""
+    course = Course(
+        slug="two-mod",
+        title="Two-module test",
+        type=CourseType.school,
+        level="Test",
+        summary="For lesson navigation tests.",
+        is_paid=False,
+        published=True,
+    )
+    db_session.add(course)
+    db_session.flush()
+
+    m1 = Module(course_id=course.id, sort_order=1, title="Module one")
+    m2 = Module(course_id=course.id, sort_order=2, title="Module two")
+    db_session.add_all([m1, m2])
+    db_session.flush()
+
+    db_session.add_all([
+        Lesson(module_id=m1.id, sort_order=1, title="L1", content="# L1\n\nContent.", duration_min=10),
+        Lesson(module_id=m1.id, sort_order=2, title="L2", content="L2 content", duration_min=10),
+        Lesson(module_id=m2.id, sort_order=1, title="L3", content="L3 content", duration_min=10),
+        Lesson(module_id=m2.id, sort_order=2, title="L4", content="L4 content", duration_min=10),
+    ])
+    db_session.commit()
+    db_session.refresh(course)
+    return course
+
+
+def test_lesson_view_without_session_returns_401(client, two_module_course):
+    any_uuid = uuid.uuid4()
+    response = client.get(
+        f"/courses/{two_module_course.id}/lessons/{any_uuid}"
+    )
+    assert response.status_code == 401
+
+
+def test_lesson_view_not_enrolled_returns_403(
+    student_client, two_module_course, db_session
+):
+    lesson = db_session.query(Lesson).first()
+    response = student_client.get(
+        f"/courses/{two_module_course.id}/lessons/{lesson.id}"
+    )
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Forbidden."}
+
+
+def test_lesson_view_first_lesson_has_no_prev(
+    student_client, db_session, student, two_module_course
+):
+    _enrol(db_session, student, two_module_course)
+    sequence = (
+        db_session.query(Lesson)
+        .join(Module, Module.id == Lesson.module_id)
+        .filter(Module.course_id == two_module_course.id)
+        .order_by(Module.sort_order, Lesson.sort_order)
+        .all()
+    )
+    first = sequence[0]
+
+    response = student_client.get(
+        f"/courses/{two_module_course.id}/lessons/{first.id}"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["title"] == "L1"
+    assert body["content"] == "# L1\n\nContent."
+    assert body["course_title"] == "Two-module test"
+    assert body["module_title"] == "Module one"
+    assert body["completed"] is False
+    assert body["prev"] is None
+    assert body["next"] is not None
+    assert body["next"]["title"] == "L2"
+
+
+def test_lesson_view_middle_lesson_has_both_neighbours_across_modules(
+    student_client, db_session, student, two_module_course
+):
+    _enrol(db_session, student, two_module_course)
+    sequence = (
+        db_session.query(Lesson)
+        .join(Module, Module.id == Lesson.module_id)
+        .filter(Module.course_id == two_module_course.id)
+        .order_by(Module.sort_order, Lesson.sort_order)
+        .all()
+    )
+    # Index 2 is the first lesson of module 2 (L3) — module crossing.
+    middle = sequence[2]
+
+    response = student_client.get(
+        f"/courses/{two_module_course.id}/lessons/{middle.id}"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["title"] == "L3"
+    assert body["module_title"] == "Module two"
+    assert body["prev"] is not None and body["prev"]["title"] == "L2"
+    assert body["next"] is not None and body["next"]["title"] == "L4"
+
+
+def test_lesson_view_last_lesson_has_no_next(
+    student_client, db_session, student, two_module_course
+):
+    _enrol(db_session, student, two_module_course)
+    sequence = (
+        db_session.query(Lesson)
+        .join(Module, Module.id == Lesson.module_id)
+        .filter(Module.course_id == two_module_course.id)
+        .order_by(Module.sort_order, Lesson.sort_order)
+        .all()
+    )
+    last = sequence[-1]
+
+    response = student_client.get(
+        f"/courses/{two_module_course.id}/lessons/{last.id}"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["title"] == "L4"
+    assert body["prev"] is not None and body["prev"]["title"] == "L3"
+    assert body["next"] is None
+
+
+def test_lesson_view_unknown_lesson_id_returns_403(
+    student_client, db_session, student, two_module_course
+):
+    _enrol(db_session, student, two_module_course)
+    fake = uuid.uuid4()
+    response = student_client.get(
+        f"/courses/{two_module_course.id}/lessons/{fake}"
+    )
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Forbidden."}
+
+
+def test_lesson_view_lesson_from_different_course_returns_403(
+    student_client, db_session, student, two_module_course, school_course
+):
+    """A lesson UUID that exists but belongs to a different course → 403."""
+    _enrol(db_session, student, two_module_course)
+    other_lesson = (
+        db_session.query(Lesson)
+        .join(Module, Module.id == Lesson.module_id)
+        .filter(Module.course_id == school_course.id)
+        .first()
+    )
+    response = student_client.get(
+        f"/courses/{two_module_course.id}/lessons/{other_lesson.id}"
+    )
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Forbidden."}

@@ -18,10 +18,10 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
-from app.models.course import Course
+from app.models.course import Course, Lesson, Module
 from app.models.enrolment import Enrolment, EnrolmentStatus
 from app.models.user import User
-from app.schemas.course import CourseDetail, CourseListItem
+from app.schemas.course import CourseDetail, CourseListItem, LessonDetailRead
 
 router = APIRouter(tags=["courses"])
 
@@ -105,4 +105,99 @@ def get_course_detail(
             }
             for module in course.modules
         ],
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# GET /courses/{course_id}/lessons/{lesson_id} — S16
+# ─────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/courses/{course_id}/lessons/{lesson_id}",
+    response_model=LessonDetailRead,
+)
+def get_lesson(
+    course_id: uuid.UUID,
+    lesson_id: uuid.UUID,
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Return one lesson with content + module/course context + neighbours.
+
+    Same no-leak design as ``GET /courses/{id}``: 403 for not-enrolled,
+    unknown lesson, or lesson-in-a-different-course. The caller can't
+    tell the cases apart.
+    """
+    enrolment = (
+        db.query(Enrolment)
+        .filter(Enrolment.learner_id == current.id)
+        .filter(Enrolment.course_id == course_id)
+        .filter(Enrolment.status == EnrolmentStatus.active)
+        .first()
+    )
+    if enrolment is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden."
+        )
+
+    lesson = db.get(Lesson, lesson_id)
+    if lesson is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden."
+        )
+
+    module = db.get(Module, lesson.module_id)
+    if module is None or module.course_id != course_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden."
+        )
+
+    course = db.get(Course, course_id)
+    if course is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden."
+        )
+
+    # Build the linear lesson sequence for the course to find neighbours.
+    sequence = (
+        db.query(Lesson)
+        .join(Module, Module.id == Lesson.module_id)
+        .filter(Module.course_id == course_id)
+        .order_by(Module.sort_order, Lesson.sort_order)
+        .all()
+    )
+    idx = next(
+        (i for i, ln in enumerate(sequence) if ln.id == lesson_id),
+        None,
+    )
+    prev_lesson = sequence[idx - 1] if idx is not None and idx > 0 else None
+    next_lesson = (
+        sequence[idx + 1]
+        if idx is not None and idx + 1 < len(sequence)
+        else None
+    )
+
+    return {
+        "id": lesson.id,
+        "sort_order": lesson.sort_order,
+        "title": lesson.title,
+        "content": lesson.content,
+        "duration_min": lesson.duration_min,
+        "media_url": lesson.media_url,
+        "completed": False,  # TODO S17
+        "course_id": course.id,
+        "course_title": course.title,
+        "module_id": module.id,
+        "module_title": module.title,
+        "prev": (
+            {"id": prev_lesson.id, "title": prev_lesson.title}
+            if prev_lesson
+            else None
+        ),
+        "next": (
+            {"id": next_lesson.id, "title": next_lesson.title}
+            if next_lesson
+            else None
+        ),
     }
