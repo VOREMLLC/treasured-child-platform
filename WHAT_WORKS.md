@@ -38,6 +38,10 @@ Each entry has four fields:
 | `POST /applications` with a valid payload persists an Application row and sends 2 stubbed emails (parent + admin) | public_site / backend | `backend/tests/test_applications.py::test_valid_application_creates_row_and_sends_two_emails` | 2026-06-11 |
 | `POST /applications` with a missing required field returns 422 and writes nothing | public_site / backend | `backend/tests/test_applications.py::test_missing_required_field_returns_422_and_writes_nothing` | 2026-06-11 |
 | `POST /applications` with an invalid email returns 422 and writes nothing | public_site / backend | `backend/tests/test_applications.py::test_invalid_email_returns_422` | 2026-06-11 |
+| `POST /auth/register` with a valid payload creates a User with role=student, status=pending, and an argon2 password hash | auth / backend | `backend/tests/test_auth.py::test_valid_register_creates_pending_student` | 2026-06-11 |
+| `POST /auth/register` with a duplicate email returns 409 and leaves exactly one row | auth / backend | `backend/tests/test_auth.py::test_duplicate_email_returns_409` | 2026-06-11 |
+| `POST /auth/register` with a password shorter than 8 characters returns 422 and writes nothing | auth / backend | `backend/tests/test_auth.py::test_short_password_returns_422` | 2026-06-11 |
+| `POST /auth/register` with an invalid email returns 422 and writes nothing | auth / backend | `backend/tests/test_auth.py::test_invalid_email_returns_422` | 2026-06-11 |
 
 ---
 
