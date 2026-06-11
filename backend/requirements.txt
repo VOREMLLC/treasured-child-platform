@@ -36,6 +36,10 @@ slowapi==0.1.9
 # password-hashing function (PHC winner). Used by app/services/security.py.
 argon2-cffi==23.1.0
 
+# --- JWT ---
+# PyJWT for the JWT access + refresh tokens issued by /auth/login.
+PyJWT==2.10.1
+
 # --- Tests ---
 pytest==8.3.4
 httpx==0.28.1

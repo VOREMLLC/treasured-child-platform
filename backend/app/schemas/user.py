@@ -52,3 +52,10 @@ class UserResponse(BaseModel):
     role: UserRole
     status: UserStatus
     created_at: datetime
+
+
+class LoginRequest(BaseModel):
+    """Body for ``POST /auth/login``."""
+
+    email: EmailStr
+    password: str = Field(..., min_length=1, max_length=128)
