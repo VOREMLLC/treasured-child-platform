@@ -55,6 +55,14 @@ Each entry has four fields:
 | `POST /auth/reset-password` with an already-consumed token returns a generic 400 | auth / backend | `backend/tests/test_auth_reset.py::test_reset_with_consumed_token_returns_generic_400` | 2026-06-11 |
 | `POST /auth/reset-password` with an expired token returns the same generic 400 | auth / backend | `backend/tests/test_auth_reset.py::test_reset_with_expired_token_returns_generic_400` | 2026-06-11 |
 | `POST /auth/reset-password` with an unknown token returns the same generic 400 | auth / backend | `backend/tests/test_auth_reset.py::test_reset_with_unknown_token_returns_generic_400` | 2026-06-11 |
+| `GET /admin/ping` without a session returns 401 generic | auth / backend | `backend/tests/test_rbac.py::test_admin_ping_unauthenticated_returns_401` | 2026-06-11 |
+| `GET /admin/ping` as a student returns 403 generic (wrong role) | auth / backend | `backend/tests/test_rbac.py::test_admin_ping_with_student_returns_403` | 2026-06-11 |
+| `GET /admin/ping` as an admin returns 200 with the admin's email | auth / backend | `backend/tests/test_rbac.py::test_admin_ping_with_admin_returns_200` | 2026-06-11 |
+| `GET /users/{user_id}` without a session returns 401 | auth / backend | `backend/tests/test_rbac.py::test_user_lookup_unauthenticated_returns_401` | 2026-06-11 |
+| `GET /users/{own_id}` as the owner returns the own UserResponse | auth / backend | `backend/tests/test_rbac.py::test_user_lookup_with_own_id_returns_own_profile` | 2026-06-11 |
+| `GET /users/{other_id}` as a non-owner returns 403 generic | auth / backend | `backend/tests/test_rbac.py::test_user_lookup_with_other_users_id_returns_403` | 2026-06-11 |
+| `GET /me` without a session returns 401 | auth / backend | `backend/tests/test_rbac.py::test_me_unauthenticated_returns_401` | 2026-06-11 |
+| `GET /me` with a valid session returns the current user | auth / backend | `backend/tests/test_rbac.py::test_me_with_session_returns_current_user` | 2026-06-11 |
 
 ---
 
