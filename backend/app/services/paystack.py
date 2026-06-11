@@ -1,13 +1,16 @@
-"""Thin wrapper around Paystack's HTTP API.
+"""Thin wrapper around Paystack's HTTP API + webhook signature check.
 
-Only the verify endpoint is needed for S11. Initialize creates a
-pending Payment row server-side and lets the frontend Paystack inline
-widget set up the actual transaction with the public key.
+- ``verify_transaction(reference)`` — GET /transaction/verify, used by
+  the synchronous /payments/verify endpoint (S11).
+- ``verify_webhook_signature(body, header)`` — HMAC-SHA512 against the
+  secret key, used by the asynchronous /payments/webhook/paystack
+  endpoint (S12).
 
-Replaceable by mocks in tests — see ``backend/tests/test_payments.py``,
-which patches ``verify_transaction``.
+Both are replaceable by mocks in tests.
 """
 
+import hashlib
+import hmac
 from typing import Any
 
 import httpx
@@ -59,3 +62,25 @@ def verify_transaction(reference: str) -> dict[str, Any]:
         )
 
     return body
+
+
+def verify_webhook_signature(
+    body_bytes: bytes, signature_header: str
+) -> bool:
+    """Constant-time HMAC-SHA512 comparison of a Paystack webhook signature.
+
+    Paystack signs every webhook delivery as
+    ``hex(HMAC_SHA512(secret_key, raw_body))`` and ships the digest in
+    the ``x-paystack-signature`` header. We re-compute and compare.
+
+    ``hmac.compare_digest`` is constant-time, which matters because a
+    naive ``==`` would leak timing information.
+    """
+    if not signature_header:
+        return False
+    expected = hmac.new(
+        settings.PAYSTACK_SECRET_KEY.encode("utf-8"),
+        body_bytes,
+        hashlib.sha512,
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature_header)

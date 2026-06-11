@@ -13,10 +13,12 @@ confirms is compared to the server-recorded amount; any mismatch
 transitions the row to ``failed`` and access is not granted.
 """
 
+import json
 import secrets
 from datetime import datetime, timezone
+from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, is_owner
@@ -40,6 +42,39 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 def _make_reference() -> str:
     """Server-generated, unique payment reference."""
     return f"TCS-{secrets.token_urlsafe(12)}"
+
+
+def _apply_paystack_result(payment: Payment, body: dict[str, Any]) -> None:
+    """Update a Payment from a Paystack verify-response or webhook body.
+
+    Idempotent: if ``payment.status`` is already ``success`` this is a
+    no-op (no DB writes, no timestamp churn, no raw_response overwrite).
+
+    Otherwise: sets ``verified_at`` to now, stores the raw response, and
+    transitions ``status``:
+      - Paystack reports ``data.status == "success"`` AND amount matches
+        the server-recorded ``amount_kobo`` → ``success``.
+      - Anything else (Paystack-failed, partial pay, missing fields) →
+        ``failed``. Access is never granted on ``failed``.
+    """
+    if payment.status is PaymentStatus.success:
+        return
+
+    data = body.get("data") or {}
+    paystack_status = data.get("status")
+    paystack_amount = data.get("amount")
+
+    payment.raw_response = body
+    payment.verified_at = datetime.now(tz=timezone.utc)
+
+    if (
+        paystack_status == "success"
+        and isinstance(paystack_amount, int)
+        and paystack_amount == payment.amount_kobo
+    ):
+        payment.status = PaymentStatus.success
+    else:
+        payment.status = PaymentStatus.failed
 
 
 # ─────────────────────────────────────────────────────────────
@@ -155,25 +190,73 @@ def verify_payment(
         # leak why; just signal failure to the caller.
         raise _GENERIC_VERIFY_FAILURE
 
-    data = body.get("data") or {}
-    paystack_status = data.get("status")
-    paystack_amount = data.get("amount")
-
-    payment.raw_response = body
-    payment.verified_at = datetime.now(tz=timezone.utc)
-
-    if (
-        paystack_status == "success"
-        and isinstance(paystack_amount, int)
-        and paystack_amount == payment.amount_kobo
-    ):
-        payment.status = PaymentStatus.success
-    else:
-        # Either Paystack reports failed, or the confirmed amount
-        # doesn't match what we recorded → amount-tamper or partial
-        # pay. Either way we don't grant access.
-        payment.status = PaymentStatus.failed
-
+    _apply_paystack_result(payment, body)
     db.commit()
     db.refresh(payment)
     return payment
+
+
+# ─────────────────────────────────────────────────────────────
+# POST /payments/webhook/paystack  (S12)
+# ─────────────────────────────────────────────────────────────
+
+
+@router.post("/webhook/paystack")
+async def paystack_webhook(
+    request: Request, db: Session = Depends(get_db)
+) -> dict:
+    """Receive Paystack webhook events (the authoritative status source).
+
+    The synchronous /payments/verify call from the frontend can be
+    dropped (user closes tab between charge and verify). The webhook
+    cannot — Paystack retries with exponential backoff until we 200.
+    So treating the webhook as authoritative makes the whole flow
+    self-healing.
+
+    Pipeline:
+      1. Read raw body bytes (NOT the parsed Pydantic body — the
+         signature is over the bytes Paystack sent).
+      2. HMAC-SHA512 against PAYSTACK_SECRET_KEY; reject 401 on
+         mismatch.
+      3. Parse JSON; reject 400 on malformed.
+      4. If event != 'charge.success' → 200 (ack, ignore).
+      5. Look up Payment by reference; if unknown → 200 (ack, ignore).
+      6. Apply ``_apply_paystack_result`` (idempotent on success).
+      7. Always 200 so Paystack doesn't keep retrying.
+    """
+    body_bytes = await request.body()
+    signature = request.headers.get("x-paystack-signature", "")
+
+    if not paystack.verify_webhook_signature(body_bytes, signature):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid signature.",
+        )
+
+    try:
+        body = json.loads(body_bytes)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid JSON body.",
+        )
+
+    if body.get("event") != "charge.success":
+        return {"ok": True}
+
+    reference = (body.get("data") or {}).get("reference")
+    if not reference:
+        return {"ok": True}
+
+    payment = (
+        db.query(Payment).filter(Payment.reference == reference).one_or_none()
+    )
+    if payment is None:
+        # Paystack could replay an old event we never created a row for;
+        # or it could be a delivery for a different tenant's reference.
+        # Either way: acknowledge and move on.
+        return {"ok": True}
+
+    _apply_paystack_result(payment, body)
+    db.commit()
+    return {"ok": True}

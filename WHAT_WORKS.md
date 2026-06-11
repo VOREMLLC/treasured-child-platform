@@ -73,6 +73,13 @@ Each entry has four fields:
 | `POST /payments/verify` with a Paystack-success + matching amount marks the Payment success and stores raw response | enrolment / backend | `backend/tests/test_payments.py::test_verify_with_paystack_success_marks_payment_success` | 2026-06-11 |
 | `POST /payments/verify` with an amount-mismatch marks the Payment failed | enrolment / backend | `backend/tests/test_payments.py::test_verify_with_amount_mismatch_marks_payment_failed` | 2026-06-11 |
 | `POST /payments/verify` on an already-success row is idempotent and does NOT re-contact Paystack | enrolment / backend | `backend/tests/test_payments.py::test_verify_is_idempotent_on_already_success` | 2026-06-11 |
+| `POST /payments/webhook/paystack` with a valid HMAC-SHA512 signature and `charge.success` marks the Payment success | enrolment / backend | `backend/tests/test_payments_webhook.py::test_webhook_valid_signature_charge_success_marks_payment_success` | 2026-06-11 |
+| `POST /payments/webhook/paystack` with an invalid signature returns 401 and leaves the Payment unchanged | enrolment / backend | `backend/tests/test_payments_webhook.py::test_webhook_invalid_signature_returns_401` | 2026-06-11 |
+| `POST /payments/webhook/paystack` without a signature header returns 401 | enrolment / backend | `backend/tests/test_payments_webhook.py::test_webhook_missing_signature_header_returns_401` | 2026-06-11 |
+| `POST /payments/webhook/paystack` with a replayed event is idempotent (status unchanged, verified_at not re-touched) | enrolment / backend | `backend/tests/test_payments_webhook.py::test_webhook_idempotent_on_replay` | 2026-06-11 |
+| `POST /payments/webhook/paystack` with an amount mismatch marks the Payment failed | enrolment / backend | `backend/tests/test_payments_webhook.py::test_webhook_amount_mismatch_marks_payment_failed` | 2026-06-11 |
+| `POST /payments/webhook/paystack` with an unknown reference returns 200 (ack) and changes nothing | enrolment / backend | `backend/tests/test_payments_webhook.py::test_webhook_unknown_reference_acknowledged_no_change` | 2026-06-11 |
+| `POST /payments/webhook/paystack` with a non-`charge.success` event returns 200 (ack) and changes nothing | enrolment / backend | `backend/tests/test_payments_webhook.py::test_webhook_non_charge_success_event_acknowledged_no_change` | 2026-06-11 |
 
 ---
 
