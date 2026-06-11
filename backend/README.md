@@ -23,6 +23,9 @@ pip install -r requirements.txt
 # Apply migrations (creates tables in SQLite at backend/local.db by default)
 alembic upgrade head
 
+# Insert demo course data (idempotent — re-runs are safe)
+python -m scripts.seed_demo
+
 # Start the dev server
 uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 ```

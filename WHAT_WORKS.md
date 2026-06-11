@@ -85,6 +85,10 @@ Each entry has four fields:
 | `POST /payments/verify` on a failed payment (amount mismatch) sends NO receipt | notifications / backend | `backend/tests/test_payments.py::test_verify_failed_payment_sends_no_receipt` | 2026-06-11 |
 | `POST /payments/webhook/paystack` with `charge.success` sends exactly one receipt email | notifications / backend | `backend/tests/test_payments_webhook.py::test_webhook_success_sends_one_receipt_email` | 2026-06-11 |
 | `POST /payments/webhook/paystack` replayed on the same success does not send a second receipt | notifications / backend | `backend/tests/test_payments_webhook.py::test_webhook_replayed_does_not_send_duplicate_receipt` | 2026-06-11 |
+| The demo seed inserts exactly 2 courses, 4 modules, and 16 lessons | courses / backend | `backend/tests/test_seed_demo.py::test_seed_inserts_two_courses_four_modules_sixteen_lessons` | 2026-06-11 |
+| Re-running the demo seed is idempotent — no duplicates | courses / backend | `backend/tests/test_seed_demo.py::test_seed_is_idempotent_no_duplicates` | 2026-06-11 |
+| The seeded school course is `jss-1` (Junior secondary, free, published) | courses / backend | `backend/tests/test_seed_demo.py::test_seed_school_course_is_jss_1` | 2026-06-11 |
+| The seeded online course is `ai-data` (paid, ₦35,000 — matching `services/fees.py`) | courses / backend | `backend/tests/test_seed_demo.py::test_seed_online_course_is_ai_data_paid` | 2026-06-11 |
 
 ---
 

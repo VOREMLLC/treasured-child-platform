@@ -6,6 +6,7 @@ Alembic and the engine can see the full schema.
 
 from app.models.application import Application, ApplicationStatus, ClassLevel
 from app.models.base import Base
+from app.models.course import Course, CourseType, Lesson, Module
 from app.models.password_reset import PasswordResetToken
 from app.models.payment import Payment, PaymentPurpose, PaymentStatus
 from app.models.user import User, UserRole, UserStatus
@@ -22,4 +23,8 @@ __all__ = [
     "Payment",
     "PaymentPurpose",
     "PaymentStatus",
+    "Course",
+    "CourseType",
+    "Module",
+    "Lesson",
 ]
