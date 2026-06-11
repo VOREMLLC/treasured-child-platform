@@ -63,6 +63,16 @@ Each entry has four fields:
 | `GET /users/{other_id}` as a non-owner returns 403 generic | auth / backend | `backend/tests/test_rbac.py::test_user_lookup_with_other_users_id_returns_403` | 2026-06-11 |
 | `GET /me` without a session returns 401 | auth / backend | `backend/tests/test_rbac.py::test_me_unauthenticated_returns_401` | 2026-06-11 |
 | `GET /me` with a valid session returns the current user | auth / backend | `backend/tests/test_rbac.py::test_me_with_session_returns_current_user` | 2026-06-11 |
+| `POST /payments/initialize` without a session returns 401 | enrolment / backend | `backend/tests/test_payments.py::test_initialize_without_session_returns_401` | 2026-06-11 |
+| `POST /payments/initialize` for fees creates a pending Payment with the server-side amount (₦125,000) | enrolment / backend | `backend/tests/test_payments.py::test_initialize_fees_creates_pending_payment_with_canonical_amount` | 2026-06-11 |
+| `POST /payments/initialize` for a programme uses the programme's price (bece-prep ₦20,000) | enrolment / backend | `backend/tests/test_payments.py::test_initialize_programme_uses_programme_price` | 2026-06-11 |
+| `POST /payments/initialize` programme without target → 422 | enrolment / backend | `backend/tests/test_payments.py::test_initialize_programme_without_target_returns_422` | 2026-06-11 |
+| `POST /payments/initialize` with an unknown programme slug → 422, no row | enrolment / backend | `backend/tests/test_payments.py::test_initialize_programme_with_unknown_target_returns_422` | 2026-06-11 |
+| `POST /payments/initialize` ignores a client-supplied `amount_kobo` (anti-tamper) | enrolment / backend | `backend/tests/test_payments.py::test_initialize_ignores_client_supplied_amount` | 2026-06-11 |
+| `POST /payments/verify` with an unknown reference → 404 | enrolment / backend | `backend/tests/test_payments.py::test_verify_unknown_reference_returns_404` | 2026-06-11 |
+| `POST /payments/verify` with a Paystack-success + matching amount marks the Payment success and stores raw response | enrolment / backend | `backend/tests/test_payments.py::test_verify_with_paystack_success_marks_payment_success` | 2026-06-11 |
+| `POST /payments/verify` with an amount-mismatch marks the Payment failed | enrolment / backend | `backend/tests/test_payments.py::test_verify_with_amount_mismatch_marks_payment_failed` | 2026-06-11 |
+| `POST /payments/verify` on an already-success row is idempotent and does NOT re-contact Paystack | enrolment / backend | `backend/tests/test_payments.py::test_verify_is_idempotent_on_already_success` | 2026-06-11 |
 
 ---
 

@@ -214,3 +214,54 @@ export function postResetPassword(
 ): Promise<GenericOk> {
   return postJson<GenericOk>("/auth/reset-password", payload);
 }
+
+// ─────────────────────────────────────────────────────────────
+// Payments (POST /payments/*) — S11
+// ─────────────────────────────────────────────────────────────
+
+export type PaymentPurpose = "fees" | "programme";
+export type PaymentStatus = "pending" | "success" | "failed";
+
+export interface PaymentInitializeRequest {
+  purpose: PaymentPurpose;
+  target?: string;
+}
+
+export interface PaymentInitializeResponse {
+  reference: string;
+  amount_kobo: number;
+  public_key: string;
+  payer_email: string;
+  purpose: PaymentPurpose;
+  target: string | null;
+}
+
+export interface PaymentVerifyRequest {
+  reference: string;
+}
+
+export interface PaymentResponse {
+  id: string;
+  reference: string;
+  amount_kobo: number;
+  purpose: PaymentPurpose;
+  target: string | null;
+  status: PaymentStatus;
+  verified_at: string | null;
+  created_at: string;
+}
+
+export function postPaymentsInitialize(
+  payload: PaymentInitializeRequest,
+): Promise<PaymentInitializeResponse> {
+  return postJson<PaymentInitializeResponse>(
+    "/payments/initialize",
+    payload,
+  );
+}
+
+export function postPaymentsVerify(
+  payload: PaymentVerifyRequest,
+): Promise<PaymentResponse> {
+  return postJson<PaymentResponse>("/payments/verify", payload);
+}
