@@ -104,6 +104,15 @@ Each entry has four fields:
 | `GET /courses/{id}/lessons/{lid}` for the last lesson returns prev: L3 + next: null | courses / backend | `backend/tests/test_courses.py::test_lesson_view_last_lesson_has_no_next` | 2026-06-11 |
 | `GET /courses/{id}/lessons/{unknown}` returns 403 generic (no lesson-id enumeration leak) | courses / backend | `backend/tests/test_courses.py::test_lesson_view_unknown_lesson_id_returns_403` | 2026-06-11 |
 | `GET /courses/{id}/lessons/{lesson-in-other-course}` returns 403 generic (no cross-course peeking) | courses / backend | `backend/tests/test_courses.py::test_lesson_view_lesson_from_different_course_returns_403` | 2026-06-11 |
+| `POST /lessons/{id}/complete` without a session returns 401 | learning / backend | `backend/tests/test_lesson_progress.py::test_complete_without_session_returns_401` | 2026-06-12 |
+| `POST /lessons/{id}/complete` for an unknown lesson returns 403 generic | learning / backend | `backend/tests/test_lesson_progress.py::test_complete_unknown_lesson_returns_403` | 2026-06-12 |
+| `POST /lessons/{id}/complete` for a lesson in a not-enrolled course returns 403 generic | learning / backend | `backend/tests/test_lesson_progress.py::test_complete_not_enrolled_returns_403` | 2026-06-12 |
+| `POST /lessons/{id}/complete` creates a lesson_progress row and returns the recomputed progress_percent | learning / backend | `backend/tests/test_lesson_progress.py::test_complete_creates_row_and_returns_progress` | 2026-06-12 |
+| `POST /lessons/{id}/complete` twice is idempotent — one row, no double progress, completed_at preserved | learning / backend | `backend/tests/test_lesson_progress.py::test_complete_twice_is_idempotent_no_duplicate_no_double_progress` | 2026-06-12 |
+| Completing all lessons in a course reaches `progress_percent == 100` | learning / backend | `backend/tests/test_lesson_progress.py::test_complete_all_lessons_reaches_100` | 2026-06-12 |
+| `GET /me/courses` carries the canonical `progress_percent` for every active enrolment | learning / backend | `backend/tests/test_lesson_progress.py::test_me_courses_includes_progress_percent` | 2026-06-12 |
+| `GET /courses/{id}` reports `lesson.completed` per lesson from the canonical `lesson_progress` table | learning / backend | `backend/tests/test_lesson_progress.py::test_course_detail_reflects_completed_lessons` | 2026-06-12 |
+| `GET /courses/{id}/lessons/{lid}` reports `completed` from the canonical `lesson_progress` table | learning / backend | `backend/tests/test_lesson_progress.py::test_lesson_view_reflects_completed_status` | 2026-06-12 |
 
 ---
 

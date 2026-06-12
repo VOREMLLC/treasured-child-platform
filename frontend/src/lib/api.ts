@@ -313,6 +313,7 @@ export interface CourseListItem {
   level: string;
   summary: string;
   is_paid: boolean;
+  progress_percent: number;
 }
 
 export interface LessonRead {
@@ -338,6 +339,7 @@ export interface CourseDetail {
   level: string;
   summary: string;
   is_paid: boolean;
+  progress_percent: number;
   modules: ModuleRead[];
 }
 
@@ -382,5 +384,26 @@ export function getLesson(
 ): Promise<LessonDetail> {
   return getJson<LessonDetail>(
     `/courses/${courseId}/lessons/${lessonId}`,
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Mark lesson complete (POST /lessons/{id}/complete) — S17
+// ─────────────────────────────────────────────────────────────
+
+export interface LessonCompleteResponse {
+  lesson_id: string;
+  completed: boolean;
+  completed_at: string;
+  course_id: string;
+  progress_percent: number;
+}
+
+export function postLessonComplete(
+  lessonId: string,
+): Promise<LessonCompleteResponse> {
+  return postJson<LessonCompleteResponse>(
+    `/lessons/${lessonId}/complete`,
+    {},
   );
 }

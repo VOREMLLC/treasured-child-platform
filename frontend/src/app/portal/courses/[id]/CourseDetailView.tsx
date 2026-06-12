@@ -135,8 +135,27 @@ export function CourseDetailView({ courseId }: { courseId: string }) {
         <p className="text-[16px] max-w-[640px] opacity-90 mb-4">
           {course.summary}
         </p>
-        <div className="text-[13px] opacity-85">
-          Progress: {completedLessons}/{totalLessons} lessons complete
+        <div className="mt-4 max-w-[420px]">
+          <div className="flex items-baseline justify-between mb-1.5">
+            <span className="text-[12px] uppercase tracking-[0.18em] opacity-85">
+              Course progress
+            </span>
+            <span className="text-[13px] font-semibold">
+              {course.progress_percent}% · {completedLessons}/{totalLessons} lessons
+            </span>
+          </div>
+          <div
+            role="progressbar"
+            aria-valuenow={course.progress_percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            className="h-2 rounded-full overflow-hidden bg-[rgba(255,255,255,0.18)]"
+          >
+            <div
+              className="h-full bg-gold transition-all"
+              style={{ width: `${course.progress_percent}%` }}
+            />
+          </div>
         </div>
       </header>
 

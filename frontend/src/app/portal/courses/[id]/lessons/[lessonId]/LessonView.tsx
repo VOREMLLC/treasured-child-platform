@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
-import { ApiError, getLesson, type LessonDetail } from "@/lib/api";
+import {
+  ApiError,
+  getLesson,
+  postLessonComplete,
+  type LessonDetail,
+} from "@/lib/api";
 
 type State =
   | { kind: "loading" }
@@ -20,10 +25,13 @@ interface Props {
 
 export function LessonView({ courseId, lessonId }: Props) {
   const [state, setState] = useState<State>({ kind: "loading" });
+  const [marking, setMarking] = useState(false);
+  const [markError, setMarkError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     setState({ kind: "loading" });
+    setMarkError(null);
     getLesson(courseId, lessonId)
       .then((lesson) => {
         if (!cancelled) setState({ kind: "ready", lesson });
@@ -47,6 +55,27 @@ export function LessonView({ courseId, lessonId }: Props) {
       cancelled = true;
     };
   }, [courseId, lessonId]);
+
+  async function onMarkComplete() {
+    if (state.kind !== "ready") return;
+    setMarking(true);
+    setMarkError(null);
+    try {
+      const result = await postLessonComplete(state.lesson.id);
+      setState({
+        kind: "ready",
+        lesson: { ...state.lesson, completed: result.completed },
+      });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setMarkError(err.message);
+      } else {
+        setMarkError("Could not mark complete. Please try again.");
+      }
+    } finally {
+      setMarking(false);
+    }
+  }
 
   if (state.kind === "loading") {
     return (
@@ -209,20 +238,25 @@ export function LessonView({ courseId, lessonId }: Props) {
             </ReactMarkdown>
           </article>
 
-          {/* Mark complete (disabled until S17) */}
+          {/* Mark complete */}
           <div className="mt-6 flex items-center gap-4 flex-wrap">
-            <button
-              type="button"
-              disabled
-              aria-disabled
-              title="The Mark-complete flow lands in slice S17."
-              className="inline-flex items-center px-5 py-3 rounded-pill bg-gradient-to-b from-blue to-blue-deep text-white font-semibold opacity-60 cursor-not-allowed"
-            >
-              Mark complete
-            </button>
-            <p className="text-muted text-[12.5px]">
-              Mark-complete + XP wire up in slice S17.
-            </p>
+            {lesson.completed ? (
+              <span className="inline-flex items-center gap-2 px-5 py-3 rounded-pill border border-success bg-[rgba(25,168,107,0.10)] text-success font-semibold">
+                <span aria-hidden>✓</span> Completed
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={onMarkComplete}
+                disabled={marking}
+                className="inline-flex items-center px-5 py-3 rounded-pill bg-gradient-to-b from-blue to-blue-deep text-white font-semibold shadow-[0_10px_24px_-10px_rgba(31,99,201,0.55)] hover:from-blue-bright transition disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {marking ? "Marking…" : "Mark complete"}
+              </button>
+            )}
+            {markError && (
+              <p className="text-danger text-[12.5px]">{markError}</p>
+            )}
           </div>
         </div>
 

@@ -144,6 +144,28 @@ function CourseCard({ course }: { course: CourseListItem }) {
         <p className="text-muted text-[14px] mb-3.5 flex-1">
           {course.summary}
         </p>
+        <div className="mb-3.5">
+          <div className="flex items-baseline justify-between mb-1">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-muted">
+              Progress
+            </span>
+            <span className="text-[12px] font-semibold text-paper">
+              {course.progress_percent}%
+            </span>
+          </div>
+          <div
+            role="progressbar"
+            aria-valuenow={course.progress_percent}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            className="h-1.5 rounded-full overflow-hidden bg-line"
+          >
+            <div
+              className="h-full bg-blue-bright transition-all"
+              style={{ width: `${course.progress_percent}%` }}
+            />
+          </div>
+        </div>
         <span className="text-blue-soft font-semibold text-[14px] inline-block transition group-hover:translate-x-0.5">
           Open →
         </span>
