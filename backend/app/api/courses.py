@@ -1,36 +1,121 @@
-"""Student-facing course endpoints (S15).
+"""Student-facing course endpoints (S15, S16, S17).
 
-  GET /me/courses        active enrolments → catalogue cards.
-  GET /courses/{course_id} detail with modules + lessons; enrolment-gated.
+  GET  /me/courses                       active enrolments + progress %.
+  GET  /courses/{course_id}              detail with modules + lessons.
+  GET  /courses/{course_id}/lessons/{id} single-lesson view.
+  POST /lessons/{lesson_id}/complete     mark lesson done (idempotent).
 
 Per ``docs/USER_ROLES.md`` §3 the student can only see their own
-enrolled courses. Both endpoints require an authenticated session.
+enrolled courses. Every endpoint requires an authenticated session.
 
-The detail endpoint returns 403 for **both** 'not enrolled' and
-'unknown id' so course UUIDs can't be enumerated by response code.
+The read endpoints return 403 for both 'not enrolled' AND 'unknown
+id' (or 'lesson from a different course') so course/lesson UUIDs
+can't be enumerated by response code.
+
+Progress percent is computed in exactly one place
+(``compute_progress``) — ``docs/ENGINEERING_PRINCIPLES.md`` §2 says
+every number comes from one place, and progress is the canonical
+example.
 """
 
 import uuid
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.course import Course, Lesson, Module
 from app.models.enrolment import Enrolment, EnrolmentStatus
+from app.models.lesson_progress import LessonProgress
 from app.models.user import User
-from app.schemas.course import CourseDetail, CourseListItem, LessonDetailRead
+from app.schemas.course import (
+    CourseDetail,
+    CourseListItem,
+    LessonCompleteResponse,
+    LessonDetailRead,
+)
 
 router = APIRouter(tags=["courses"])
+
+
+_FORBIDDEN = HTTPException(
+    status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden."
+)
+
+
+# ─────────────────────────────────────────────────────────────
+# Shared helpers — single source of truth for progress
+# ─────────────────────────────────────────────────────────────
+
+
+def compute_progress(
+    db: Session, learner_id: uuid.UUID, course_id: uuid.UUID
+) -> int:
+    """Return the learner's progress in this course as 0–100.
+
+    THE single function that turns lesson_progress rows into a
+    progress percent. Every endpoint that exposes one calls this.
+    """
+    total = (
+        db.query(Lesson)
+        .join(Module, Module.id == Lesson.module_id)
+        .filter(Module.course_id == course_id)
+        .count()
+    )
+    if total == 0:
+        return 0
+    completed = (
+        db.query(LessonProgress)
+        .join(Lesson, Lesson.id == LessonProgress.lesson_id)
+        .join(Module, Module.id == Lesson.module_id)
+        .filter(Module.course_id == course_id)
+        .filter(LessonProgress.learner_id == learner_id)
+        .count()
+    )
+    return int((completed / total) * 100)
+
+
+def _completed_lesson_ids_for_course(
+    db: Session, learner_id: uuid.UUID, course_id: uuid.UUID
+) -> set:
+    """All lesson ids the learner has completed inside this course."""
+    rows = (
+        db.query(LessonProgress.lesson_id)
+        .join(Lesson, Lesson.id == LessonProgress.lesson_id)
+        .join(Module, Module.id == Lesson.module_id)
+        .filter(Module.course_id == course_id)
+        .filter(LessonProgress.learner_id == learner_id)
+        .all()
+    )
+    return {r[0] for r in rows}
+
+
+def _is_lesson_complete(
+    db: Session, learner_id: uuid.UUID, lesson_id: uuid.UUID
+) -> bool:
+    return (
+        db.query(LessonProgress)
+        .filter(LessonProgress.learner_id == learner_id)
+        .filter(LessonProgress.lesson_id == lesson_id)
+        .first()
+        is not None
+    )
+
+
+# ─────────────────────────────────────────────────────────────
+# GET /me/courses
+# ─────────────────────────────────────────────────────────────
 
 
 @router.get("/me/courses", response_model=List[CourseListItem])
 def list_my_courses(
     current: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> List[Course]:
+) -> List[dict]:
     """Return the courses the signed-in learner is actively enrolled in."""
     courses = (
         db.query(Course)
@@ -40,7 +125,24 @@ def list_my_courses(
         .order_by(Course.title)
         .all()
     )
-    return courses
+    return [
+        {
+            "id": c.id,
+            "slug": c.slug,
+            "title": c.title,
+            "type": c.type,
+            "level": c.level,
+            "summary": c.summary,
+            "is_paid": c.is_paid,
+            "progress_percent": compute_progress(db, current.id, c.id),
+        }
+        for c in courses
+    ]
+
+
+# ─────────────────────────────────────────────────────────────
+# GET /courses/{course_id}
+# ─────────────────────────────────────────────────────────────
 
 
 @router.get("/courses/{course_id}", response_model=CourseDetail)
@@ -62,23 +164,16 @@ def get_course_detail(
         .first()
     )
     if enrolment is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden.",
-        )
+        raise _FORBIDDEN
 
     course = db.get(Course, course_id)
     if course is None:
-        # Shouldn't happen — FK protects this — but a defensive 403
-        # keeps the no-leak guarantee even on a half-dropped DB.
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Forbidden.",
-        )
+        raise _FORBIDDEN
 
-    # Build the response shape explicitly so the `completed` stub
-    # slots in. When S17 lands lesson_progress, look it up per
-    # (current.id, lesson.id) and replace `False` below.
+    completed_ids = _completed_lesson_ids_for_course(
+        db, current.id, course_id
+    )
+
     return {
         "id": course.id,
         "slug": course.slug,
@@ -87,6 +182,7 @@ def get_course_detail(
         "level": course.level,
         "summary": course.summary,
         "is_paid": course.is_paid,
+        "progress_percent": compute_progress(db, current.id, course_id),
         "modules": [
             {
                 "id": module.id,
@@ -98,7 +194,7 @@ def get_course_detail(
                         "sort_order": lesson.sort_order,
                         "title": lesson.title,
                         "duration_min": lesson.duration_min,
-                        "completed": False,  # TODO S17
+                        "completed": lesson.id in completed_ids,
                     }
                     for lesson in module.lessons
                 ],
@@ -109,7 +205,7 @@ def get_course_detail(
 
 
 # ─────────────────────────────────────────────────────────────
-# GET /courses/{course_id}/lessons/{lesson_id} — S16
+# GET /courses/{course_id}/lessons/{lesson_id}
 # ─────────────────────────────────────────────────────────────
 
 
@@ -126,8 +222,7 @@ def get_lesson(
     """Return one lesson with content + module/course context + neighbours.
 
     Same no-leak design as ``GET /courses/{id}``: 403 for not-enrolled,
-    unknown lesson, or lesson-in-a-different-course. The caller can't
-    tell the cases apart.
+    unknown lesson, or lesson-in-a-different-course.
     """
     enrolment = (
         db.query(Enrolment)
@@ -137,29 +232,20 @@ def get_lesson(
         .first()
     )
     if enrolment is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden."
-        )
+        raise _FORBIDDEN
 
     lesson = db.get(Lesson, lesson_id)
     if lesson is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden."
-        )
+        raise _FORBIDDEN
 
     module = db.get(Module, lesson.module_id)
     if module is None or module.course_id != course_id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden."
-        )
+        raise _FORBIDDEN
 
     course = db.get(Course, course_id)
     if course is None:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden."
-        )
+        raise _FORBIDDEN
 
-    # Build the linear lesson sequence for the course to find neighbours.
     sequence = (
         db.query(Lesson)
         .join(Module, Module.id == Lesson.module_id)
@@ -185,7 +271,7 @@ def get_lesson(
         "content": lesson.content,
         "duration_min": lesson.duration_min,
         "media_url": lesson.media_url,
-        "completed": False,  # TODO S17
+        "completed": _is_lesson_complete(db, current.id, lesson.id),
         "course_id": course.id,
         "course_title": course.title,
         "module_id": module.id,
@@ -199,5 +285,98 @@ def get_lesson(
             {"id": next_lesson.id, "title": next_lesson.title}
             if next_lesson
             else None
+        ),
+    }
+
+
+# ─────────────────────────────────────────────────────────────
+# POST /lessons/{lesson_id}/complete  (S17)
+# ─────────────────────────────────────────────────────────────
+
+
+@router.post(
+    "/lessons/{lesson_id}/complete",
+    response_model=LessonCompleteResponse,
+)
+def mark_lesson_complete(
+    lesson_id: uuid.UUID,
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Mark a lesson as completed by the current user.
+
+    Idempotent at two levels:
+      - App: if a LessonProgress row already exists, return it without
+        a second insert and return the recomputed progress percent.
+      - DB: the unique constraint on (learner_id, lesson_id) hard-
+        rejects a second insert under any race, and the
+        IntegrityError handler re-queries the existing row.
+
+    Enrolment gate (same generic 403 used by the read endpoints):
+      - Lesson must exist.
+      - Lesson must belong to a module whose course the user is
+        actively enrolled in.
+    """
+    lesson = db.get(Lesson, lesson_id)
+    if lesson is None:
+        raise _FORBIDDEN
+    module = db.get(Module, lesson.module_id)
+    if module is None:
+        raise _FORBIDDEN
+
+    enrolment = (
+        db.query(Enrolment)
+        .filter(Enrolment.learner_id == current.id)
+        .filter(Enrolment.course_id == module.course_id)
+        .filter(Enrolment.status == EnrolmentStatus.active)
+        .first()
+    )
+    if enrolment is None:
+        raise _FORBIDDEN
+
+    existing = (
+        db.query(LessonProgress)
+        .filter(LessonProgress.learner_id == current.id)
+        .filter(LessonProgress.lesson_id == lesson_id)
+        .first()
+    )
+    if existing is not None:
+        return {
+            "lesson_id": lesson.id,
+            "completed": True,
+            "completed_at": existing.completed_at,
+            "course_id": module.course_id,
+            "progress_percent": compute_progress(
+                db, current.id, module.course_id
+            ),
+        }
+
+    row = LessonProgress(
+        learner_id=current.id,
+        lesson_id=lesson_id,
+        completed_at=datetime.now(tz=timezone.utc),
+    )
+    db.add(row)
+    try:
+        db.commit()
+    except IntegrityError:
+        # Race: another concurrent request inserted between our check
+        # and our insert. The DB unique constraint kept us safe.
+        db.rollback()
+        row = (
+            db.query(LessonProgress)
+            .filter(LessonProgress.learner_id == current.id)
+            .filter(LessonProgress.lesson_id == lesson_id)
+            .one()
+        )
+    db.refresh(row)
+
+    return {
+        "lesson_id": lesson.id,
+        "completed": True,
+        "completed_at": row.completed_at,
+        "course_id": module.course_id,
+        "progress_percent": compute_progress(
+            db, current.id, module.course_id
         ),
     }

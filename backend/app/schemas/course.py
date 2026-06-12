@@ -1,6 +1,7 @@
 """Pydantic shapes for the student-facing /me/courses and /courses/{id}."""
 
 import uuid
+from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -32,8 +33,6 @@ class ModuleRead(BaseModel):
 class CourseListItem(BaseModel):
     """One card in /me/courses."""
 
-    model_config = ConfigDict(from_attributes=True)
-
     id: uuid.UUID
     slug: str
     title: str
@@ -41,6 +40,7 @@ class CourseListItem(BaseModel):
     level: str
     summary: str
     is_paid: bool
+    progress_percent: int
 
 
 class CourseDetail(BaseModel):
@@ -53,6 +53,7 @@ class CourseDetail(BaseModel):
     level: str
     summary: str
     is_paid: bool
+    progress_percent: int
     modules: List[ModuleRead]
 
 
@@ -92,3 +93,23 @@ class LessonDetailRead(BaseModel):
     # Linear navigation. None at the start / end of the course.
     prev: Optional[LessonNeighbor]
     next: Optional[LessonNeighbor]
+
+
+# ─────────────────────────────────────────────────────────────
+# POST /lessons/{id}/complete — S17
+# ─────────────────────────────────────────────────────────────
+
+
+class LessonCompleteResponse(BaseModel):
+    """Returned from POST /lessons/{id}/complete.
+
+    Includes the recomputed course progress_percent (from the single
+    ``compute_progress`` helper) so the frontend can flip the
+    progress bar in place without a second round trip.
+    """
+
+    lesson_id: uuid.UUID
+    completed: bool
+    completed_at: datetime
+    course_id: uuid.UUID
+    progress_percent: int
