@@ -80,5 +80,19 @@ class Settings(BaseSettings):
         description="Paystack API base URL. Don't include a trailing slash.",
     )
 
+    # ---- AI agent runtime (S23) ----
+    ANTHROPIC_API_KEY: str = Field(
+        default="sk-ant-xxx",
+        description="Anthropic API key. Get one at console.anthropic.com.",
+    )
+    AGENT_MODEL: str = Field(
+        default="claude-sonnet-4-6",
+        description="Anthropic model ID used by the VOREM tutor agent.",
+    )
+    AGENT_MAX_TOKENS: int = Field(
+        default=1024,
+        description="Max tokens the tutor may generate per call.",
+    )
+
 
 settings = Settings()

@@ -6,6 +6,9 @@ Inserts exactly the two demo courses BUILD_PLAN S14 specifies:
 
 Total: 2 courses, 4 modules, 16 lessons.
 
+S20 addition: one Quiz (with 3 Questions) attached to the last lesson
+of each course's first module. Seeded idempotently via Quiz.lesson_id.
+
 Idempotent at the course level: re-running this script checks whether
 a course with the given slug already exists; if so, it skips creating
 the whole sub-tree. Course is the unit of "did we seed?".
@@ -23,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import SessionLocal
 from app.models.course import Course, CourseType, Lesson, Module
+from app.models.quiz import Question, Quiz
 
 
 # ─────────────────────────────────────────────────────────────
@@ -224,6 +228,67 @@ DEMO: list[CourseSpec] = [
 
 
 # ─────────────────────────────────────────────────────────────
+# Demo quizzes (S20) — one per course, attached to the last
+# lesson of the first module.
+# ─────────────────────────────────────────────────────────────
+
+
+DEMO_QUIZZES: dict[str, dict] = {
+    # key = course slug
+    "jss-1": {
+        "title": "Introduction to mathematics — check your understanding",
+        "questions": [
+            {
+                "prompt": "What is the place value of the digit 4 in the number 47?",
+                "options": ["Ones", "Tens", "Hundreds", "Thousands"],
+                "answer_index": 1,
+            },
+            {
+                "prompt": "Which of the following is a decimal?",
+                "options": ["1/2", "0.5", "50%", "Five"],
+                "answer_index": 1,
+            },
+            {
+                "prompt": "What is 3/4 expressed as a decimal?",
+                "options": ["0.25", "0.50", "0.75", "1.00"],
+                "answer_index": 2,
+            },
+        ],
+    },
+    "ai-data": {
+        "title": "Foundations of data — check your understanding",
+        "questions": [
+            {
+                "prompt": "Which of these is an example of numerical data?",
+                "options": [
+                    "A person's name",
+                    "A photo",
+                    "A temperature reading",
+                    "A colour",
+                ],
+                "answer_index": 2,
+            },
+            {
+                "prompt": "What does the AVERAGE formula calculate?",
+                "options": [
+                    "The largest value",
+                    "The total of all values",
+                    "The middle value",
+                    "The sum divided by the count",
+                ],
+                "answer_index": 3,
+            },
+            {
+                "prompt": "Which chart type is best for showing how a value changes over time?",
+                "options": ["Pie chart", "Bar chart", "Line chart", "Scatter plot"],
+                "answer_index": 2,
+            },
+        ],
+    },
+}
+
+
+# ─────────────────────────────────────────────────────────────
 # Seed
 # ─────────────────────────────────────────────────────────────
 
@@ -234,7 +299,7 @@ def seed(db: Session) -> dict[str, int]:
     Returns the number of *new* rows inserted in this call. A second
     call with the same DB returns zeros for everything.
     """
-    inserted = {"courses": 0, "modules": 0, "lessons": 0}
+    inserted = {"courses": 0, "modules": 0, "lessons": 0, "quizzes": 0, "questions": 0}
 
     for spec in DEMO:
         existing = (
@@ -279,6 +344,57 @@ def seed(db: Session) -> dict[str, int]:
                 )
                 db.add(lesson)
                 inserted["lessons"] += 1
+
+    db.commit()
+
+    # S20 — seed one quiz per course, attached to the last lesson of
+    # the first module. Idempotent: skip if Quiz already exists for
+    # that lesson.
+    for course_slug, quiz_spec in DEMO_QUIZZES.items():
+        course = db.query(Course).filter(Course.slug == course_slug).first()
+        if course is None:
+            continue
+
+        first_module = (
+            db.query(Module)
+            .filter(Module.course_id == course.id)
+            .order_by(Module.sort_order)
+            .first()
+        )
+        if first_module is None:
+            continue
+
+        last_lesson = (
+            db.query(Lesson)
+            .filter(Lesson.module_id == first_module.id)
+            .order_by(Lesson.sort_order.desc())
+            .first()
+        )
+        if last_lesson is None:
+            continue
+
+        already = (
+            db.query(Quiz).filter(Quiz.lesson_id == last_lesson.id).first()
+        )
+        if already is not None:
+            continue
+
+        quiz = Quiz(lesson_id=last_lesson.id, title=quiz_spec["title"])
+        db.add(quiz)
+        db.flush()
+        inserted["quizzes"] += 1
+
+        for q_idx, q_spec in enumerate(quiz_spec["questions"], start=1):
+            db.add(
+                Question(
+                    quiz_id=quiz.id,
+                    sort_order=q_idx,
+                    prompt=q_spec["prompt"],
+                    options=q_spec["options"],
+                    answer_index=q_spec["answer_index"],
+                )
+            )
+            inserted["questions"] += 1
 
     db.commit()
     return inserted

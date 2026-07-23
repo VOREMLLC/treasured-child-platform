@@ -113,8 +113,84 @@ Each entry has four fields:
 | `GET /me/courses` carries the canonical `progress_percent` for every active enrolment | learning / backend | `backend/tests/test_lesson_progress.py::test_me_courses_includes_progress_percent` | 2026-06-12 |
 | `GET /courses/{id}` reports `lesson.completed` per lesson from the canonical `lesson_progress` table | learning / backend | `backend/tests/test_lesson_progress.py::test_course_detail_reflects_completed_lessons` | 2026-06-12 |
 | `GET /courses/{id}/lessons/{lid}` reports `completed` from the canonical `lesson_progress` table | learning / backend | `backend/tests/test_lesson_progress.py::test_lesson_view_reflects_completed_status` | 2026-06-12 |
+| `POST /enrolments` without a session returns 401 | enrolment / backend | `backend/tests/test_enrolments.py::test_enrol_without_session_returns_401` | 2026-06-13 |
+| `POST /enrolments` for a free course creates an Enrolment row with source=free and status=active | enrolment / backend | `backend/tests/test_enrolments.py::test_enrol_free_course_creates_enrolment` | 2026-06-13 |
+| `POST /enrolments` for a free course twice returns 409 and leaves exactly one row | enrolment / backend | `backend/tests/test_enrolments.py::test_enrol_free_course_twice_returns_409` | 2026-06-13 |
+| `POST /enrolments` with an unknown course_id returns 404 | enrolment / backend | `backend/tests/test_enrolments.py::test_enrol_unknown_course_returns_404` | 2026-06-13 |
+| `POST /enrolments` for an unpublished course returns 404 | enrolment / backend | `backend/tests/test_enrolments.py::test_enrol_unpublished_course_returns_404` | 2026-06-13 |
+| `POST /enrolments` for a paid course without any payment returns 402 | enrolment / backend | `backend/tests/test_enrolments.py::test_enrol_paid_course_without_payment_returns_402` | 2026-06-13 |
+| `POST /enrolments` for a paid course with a pending (unverified) payment returns 402 | enrolment / backend | `backend/tests/test_enrolments.py::test_enrol_paid_course_with_pending_payment_returns_402` | 2026-06-13 |
+| `POST /enrolments` for a paid course after a verified payment creates Enrolment with source=paid | enrolment / backend | `backend/tests/test_enrolments.py::test_enrol_paid_course_after_verified_payment_returns_201` | 2026-06-13 |
+| `POST /enrolments` with a payment for a different programme returns 402 (no cross-programme access) | enrolment / backend | `backend/tests/test_enrolments.py::test_enrol_paid_course_wrong_slug_returns_402` | 2026-06-13 |
+| `POST /payments/verify` for a programme payment auto-creates Enrolment server-side (no second client call needed) | enrolment / backend | `backend/tests/test_enrolments.py::test_verify_success_auto_creates_enrolment` | 2026-06-13 |
+| After auto-enrol via verify, `POST /enrolments` returns 409 — not 402 | enrolment / backend | `backend/tests/test_enrolments.py::test_verify_auto_enrol_then_post_enrolments_returns_409` | 2026-06-13 |
+| Re-verifying an already-success payment does not create a second Enrolment row | enrolment / backend | `backend/tests/test_enrolments.py::test_verify_idempotent_does_not_double_enrol` | 2026-06-13 |
+| Paystack webhook `charge.success` for a programme auto-creates Enrolment server-side | enrolment / backend | `backend/tests/test_enrolments.py::test_webhook_success_auto_creates_enrolment` | 2026-06-13 |
+| Replaying the same webhook does not create a second Enrolment row | enrolment / backend | `backend/tests/test_enrolments.py::test_webhook_idempotent_does_not_double_enrol` | 2026-06-13 |
+| `GET /quizzes/{id}` without a session returns 401 | assessment / backend | `backend/tests/test_quiz.py::test_get_quiz_without_session_returns_401` | 2026-06-13 |
+| `GET /quizzes/{id}` for a not-enrolled student returns 403 generic | assessment / backend | `backend/tests/test_quiz.py::test_get_quiz_not_enrolled_returns_403` | 2026-06-13 |
+| `GET /quizzes/{unknown_uuid}` returns the same generic 403 as not-enrolled (no UUID enumeration) | assessment / backend | `backend/tests/test_quiz.py::test_get_quiz_unknown_uuid_returns_same_403` | 2026-06-13 |
+| `GET /quizzes/{id}` for an enrolled student returns 200 with title and ordered questions | assessment / backend | `backend/tests/test_quiz.py::test_get_quiz_has_title_and_questions` | 2026-06-13 |
+| The parsed JSON response for `GET /quizzes/{id}` contains no `answer_index` at any depth | assessment / backend | `backend/tests/test_quiz.py::test_answer_index_not_in_parsed_response` | 2026-06-13 |
+| The raw HTTP response bytes for `GET /quizzes/{id}` contain no `answer_index` string | assessment / backend | `backend/tests/test_quiz.py::test_answer_index_not_in_raw_response_bytes` | 2026-06-13 |
+| The demo seed inserts exactly 2 quizzes and 6 questions (S20 addition) | assessment / backend | `backend/tests/test_quiz.py::test_seed_inserts_two_quizzes_six_questions` | 2026-06-13 |
+| The seed is idempotent for quizzes — re-running inserts nothing | assessment / backend | `backend/tests/test_quiz.py::test_seed_is_idempotent_for_quizzes` | 2026-06-13 |
+| The Pydantic `QuizRead` schema strips `answer_index` from ORM rows that carry it | assessment / backend | `backend/tests/test_quiz.py::test_seed_quiz_questions_have_no_answer_index_in_schema` | 2026-06-13 |
+| `POST /quizzes/{id}/attempt` without a session returns 401 | assessment / backend | `backend/tests/test_quiz_attempt.py::test_attempt_without_session_returns_401` | 2026-06-13 |
+| `POST /quizzes/{id}/attempt` for a not-enrolled student returns 403 generic | assessment / backend | `backend/tests/test_quiz_attempt.py::test_attempt_not_enrolled_returns_403` | 2026-06-13 |
+| `POST /quizzes/{unknown_uuid}/attempt` returns the same generic 403 (no UUID enumeration) | assessment / backend | `backend/tests/test_quiz_attempt.py::test_attempt_unknown_quiz_returns_403` | 2026-06-13 |
+| All-correct answers returns score=3, total=3 (server-computed, not client-supplied) | assessment / backend | `backend/tests/test_quiz_attempt.py::test_perfect_score_returns_3_of_3` | 2026-06-13 |
+| All-wrong answers returns score=0 (server-side scoring cannot be gamed) | assessment / backend | `backend/tests/test_quiz_attempt.py::test_all_wrong_returns_0_of_3` | 2026-06-13 |
+| Mixed answers are scored accurately (Q1 right, Q2+Q3 wrong → 1/3) | assessment / backend | `backend/tests/test_quiz_attempt.py::test_mixed_answers_scores_correctly` | 2026-06-13 |
+| A successful attempt persists score, total, and raw answers to the `quiz_attempts` table | assessment / backend | `backend/tests/test_quiz_attempt.py::test_attempt_persisted_in_db` | 2026-06-13 |
+| `xp_awarded` is null in the attempt response (S22 not yet wired) | assessment / backend | `backend/tests/test_quiz_attempt.py::test_xp_awarded_is_null_until_s22` | 2026-06-13 |
+| Re-attempting a quiz creates a second row — both scores independent | assessment / backend | `backend/tests/test_quiz_attempt.py::test_re_attempt_creates_second_row` | 2026-06-13 |
+| Sending the wrong number of answers returns 422 and stores no row | assessment / backend | `backend/tests/test_quiz_attempt.py::test_wrong_answer_count_returns_422` and `::test_wrong_answer_count_stores_no_row` | 2026-06-13 |
+| Sending an empty answers list returns 422 | assessment / backend | `backend/tests/test_quiz_attempt.py::test_empty_answers_list_returns_422` | 2026-06-13 |
+| The raw HTTP response bytes for `POST /quizzes/{id}/attempt` contain no `answer_index` string | assessment / backend | `backend/tests/test_quiz_attempt.py::test_answer_index_not_in_attempt_response` | 2026-06-13 |
+| Completing a lesson awards +20 XP and creates a Gamification row | gamification / backend | `backend/tests/test_gamification.py::test_lesson_complete_awards_20_xp` | 2026-06-13 |
+| Completing the same lesson twice awards XP only once (idempotent) | gamification / backend | `backend/tests/test_gamification.py::test_lesson_complete_twice_awards_xp_only_once` | 2026-06-13 |
+| Completing multiple distinct lessons accumulates XP correctly | gamification / backend | `backend/tests/test_gamification.py::test_lesson_complete_multiple_lessons_accumulates_xp` | 2026-06-13 |
+| Level formula: `floor(xp / 300) + 1` is computed correctly at boundaries | gamification / backend | `backend/tests/test_gamification.py::test_level_computed_correctly` | 2026-06-13 |
+| Level advances to 2 at 300 XP (15 lesson completions) | gamification / backend | `backend/tests/test_gamification.py::test_level_updates_after_xp` | 2026-06-13 |
+| First activity starts streak at 1 | gamification / backend | `backend/tests/test_gamification.py::test_first_activity_starts_streak_at_1` | 2026-06-13 |
+| Same-day activity does not increment streak | gamification / backend | `backend/tests/test_gamification.py::test_same_day_activity_does_not_increment_streak` | 2026-06-13 |
+| Consecutive-day activity increments streak | gamification / backend | `backend/tests/test_gamification.py::test_consecutive_day_increments_streak` | 2026-06-13 |
+| A gap in activity resets streak to 1 | gamification / backend | `backend/tests/test_gamification.py::test_gap_in_activity_resets_streak` | 2026-06-13 |
+| Perfect quiz awards +15 XP × correct answers + 30 bonus | gamification / backend | `backend/tests/test_gamification.py::test_quiz_perfect_score_awards_correct_xp` | 2026-06-13 |
+| Partial quiz score awards +15 XP per correct answer, no bonus | gamification / backend | `backend/tests/test_gamification.py::test_quiz_partial_score_awards_correct_xp` | 2026-06-13 |
+| Quiz XP awarded only on first attempt; re-attempts award 0 XP | gamification / backend | `backend/tests/test_gamification.py::test_quiz_xp_awarded_only_on_first_attempt` | 2026-06-13 |
+| All-wrong quiz awards 0 XP | gamification / backend | `backend/tests/test_gamification.py::test_quiz_zero_score_awards_0_xp` | 2026-06-13 |
+| "First Lesson" badge awarded on first lesson completion | gamification / backend | `backend/tests/test_gamification.py::test_first_lesson_badge_awarded` | 2026-06-13 |
+| "First Lesson" badge awarded only once (idempotent) | gamification / backend | `backend/tests/test_gamification.py::test_first_lesson_badge_awarded_only_once` | 2026-06-13 |
+| "Quiz Master" badge awarded on any perfect quiz | gamification / backend | `backend/tests/test_gamification.py::test_quiz_master_badge_awarded_on_perfect_quiz` | 2026-06-13 |
+| "Quiz Master" badge NOT awarded for imperfect quiz | gamification / backend | `backend/tests/test_gamification.py::test_quiz_master_badge_not_awarded_for_imperfect_quiz` | 2026-06-13 |
+| "Course Complete" badge awarded when course progress reaches 100% | gamification / backend | `backend/tests/test_gamification.py::test_course_complete_badge_awarded_on_100_percent` | 2026-06-13 |
+| "7-Day Streak" badge awarded when streak reaches 7 consecutive days | gamification / backend | `backend/tests/test_gamification.py::test_7_day_streak_badge_awarded_at_streak_7` | 2026-06-13 |
+| Badge list never contains duplicates | gamification / backend | `backend/tests/test_gamification.py::test_badge_list_has_no_duplicates` | 2026-06-13 |
 
 ---
+
+| `POST /agents/tutor` without a session returns 401 | agents / backend | `backend/tests/test_tutor.py::test_tutor_without_session_returns_401` | 2026-06-13 |
+| `POST /agents/tutor` for a not-enrolled student returns 403 generic | agents / backend | `backend/tests/test_tutor.py::test_tutor_not_enrolled_returns_403` | 2026-06-13 |
+| `POST /agents/tutor` with an unknown lesson_id returns 403 generic (no UUID enumeration) | agents / backend | `backend/tests/test_tutor.py::test_tutor_unknown_lesson_returns_403` | 2026-06-13 |
+| `POST /agents/tutor` returns the tutor reply and a run_id | agents / backend | `backend/tests/test_tutor.py::test_tutor_returns_reply` | 2026-06-13 |
+| Every tutor call writes an AgentRun row with agent, input, output, tokens, flagged=False | agents / backend | `backend/tests/test_tutor.py::test_tutor_logs_agent_run_row` | 2026-06-13 |
+| The run_id in the response matches the persisted AgentRun row | agents / backend | `backend/tests/test_tutor.py::test_tutor_run_id_in_response_matches_db` | 2026-06-13 |
+| Empty question returns 422 | agents / backend | `backend/tests/test_tutor.py::test_tutor_empty_question_returns_422` | 2026-06-13 |
+| Anthropic APIError returns 503 and still logs a run row | agents / backend | `backend/tests/test_tutor.py::test_tutor_api_error_returns_503` | 2026-06-13 |
+| Anthropic API key is never present in the HTTP response | agents / backend | `backend/tests/test_tutor.py::test_api_key_not_in_response` | 2026-06-13 |
+| The VOREM system prompt contains the lesson title and the distress guardrail | agents / backend | `backend/tests/test_tutor.py::test_system_prompt_contains_lesson_title` | 2026-06-13 |
+| Distress phrase in question bypasses LLM and returns safe human-contact reply | guardrails / backend | `backend/tests/test_guardrails.py::test_distress_input_returns_safe_reply` | 2026-06-13 |
+| Distress input sets AgentRun.flagged=True in the audit log | guardrails / backend | `backend/tests/test_guardrails.py::test_distress_input_sets_flagged_true` | 2026-06-13 |
+| Banned topic (drugs, weapons, etc.) bypasses LLM and returns safe refusal | guardrails / backend | `backend/tests/test_guardrails.py::test_banned_topic_returns_safe_refusal` | 2026-06-13 |
+| Banned topic sets AgentRun.flagged=False (policy block, not welfare concern) | guardrails / backend | `backend/tests/test_guardrails.py::test_banned_topic_flagged_false` | 2026-06-13 |
+| PII solicitation (phone number request) bypasses LLM and returns safe refusal | guardrails / backend | `backend/tests/test_guardrails.py::test_pii_request_returns_safe_refusal` | 2026-06-13 |
+| WhatsApp/social-media contact request bypasses LLM and returns safe refusal | guardrails / backend | `backend/tests/test_guardrails.py::test_whatsapp_request_returns_safe_refusal` | 2026-06-13 |
+| Unsafe LLM output (contact solicitation) is replaced with safe refusal | guardrails / backend | `backend/tests/test_guardrails.py::test_unsafe_output_replaced_with_safe_refusal` | 2026-06-13 |
+| Unsafe LLM output sets AgentRun.flagged=True | guardrails / backend | `backend/tests/test_guardrails.py::test_unsafe_output_sets_flagged_true` | 2026-06-13 |
+| Clean input and clean output returns the original LLM reply unchanged | guardrails / backend | `backend/tests/test_guardrails.py::test_clean_question_returns_llm_reply` | 2026-06-13 |
+| POST /agents/tutor has a 20/minute rate limit (slowapi) | guardrails / backend | `backend/app/api/agents.py` (decorator) | 2026-06-13 |
 
 ## How to add a row
 

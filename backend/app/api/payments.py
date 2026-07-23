@@ -1,4 +1,4 @@
-"""Paystack-backed payment endpoints (S11).
+"""Paystack-backed payment endpoints (S11 + S19).
 
 Two endpoints:
 
@@ -11,6 +11,14 @@ Money is never trusted from the client. The amount is looked up
 server-side via :mod:`app.services.fees`. On verify, the amount Paystack
 confirms is compared to the server-recorded amount; any mismatch
 transitions the row to ``failed`` and access is not granted.
+
+S19 addition: when a programme payment transitions to ``success``
+(either via verify or webhook), ``_auto_enrol`` creates the Enrolment
+server-side so the learner immediately has access without a second
+client call. The insert is wrapped in a savepoint so an IntegrityError
+on the unique(learner_id, course_id) constraint (from a concurrent
+verify + webhook) rolls back only the enrolment insert and leaves the
+payment status update intact.
 """
 
 import json
@@ -19,6 +27,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, is_owner
@@ -47,6 +56,45 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 def _make_reference() -> str:
     """Server-generated, unique payment reference."""
     return f"TCS-{secrets.token_urlsafe(12)}"
+
+
+def _auto_enrol(payment: Payment, db: Session) -> None:
+    """Create an Enrolment when a programme payment succeeds (S19).
+
+    Called exactly once per payment, inside ``_apply_paystack_result``,
+    at the moment ``status`` transitions from non-success to ``success``.
+    The savepoint means an IntegrityError on the unique(learner_id,
+    course_id) constraint rolls back only this insert and leaves the
+    enclosing transaction (the payment status update) untouched.
+    """
+    from app.models.course import Course
+    from app.models.enrolment import Enrolment, EnrolmentSource, EnrolmentStatus
+
+    if not payment.target:
+        return
+
+    course = (
+        db.query(Course)
+        .filter(Course.slug == payment.target)
+        .filter(Course.published.is_(True))
+        .first()
+    )
+    if course is None:
+        return
+
+    sp = db.begin_nested()  # savepoint — isolates this insert
+    try:
+        row = Enrolment(
+            learner_id=payment.payer_id,
+            course_id=course.id,
+            status=EnrolmentStatus.active,
+            source=EnrolmentSource.paid,
+        )
+        db.add(row)
+        sp.commit()
+    except IntegrityError:
+        # Already enrolled (concurrent verify + webhook race).
+        sp.rollback()
 
 
 def _apply_paystack_result(
@@ -84,6 +132,8 @@ def _apply_paystack_result(
     ):
         payment.status = PaymentStatus.success
         _send_receipt(payment, db)
+        if payment.purpose is PaymentPurpose.programme:
+            _auto_enrol(payment, db)
     else:
         payment.status = PaymentStatus.failed
 

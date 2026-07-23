@@ -1,9 +1,10 @@
-"""Student-facing course endpoints (S15, S16, S17).
+"""Student-facing course endpoints (S15, S16, S17, S27).
 
   GET  /me/courses                       active enrolments + progress %.
   GET  /courses/{course_id}              detail with modules + lessons.
   GET  /courses/{course_id}/lessons/{id} single-lesson view.
   POST /lessons/{lesson_id}/complete     mark lesson done (idempotent).
+  GET  /courses/{course_id}/certificate  download certificate (S27).
 
 Per ``docs/USER_ROLES.md`` §3 the student can only see their own
 enrolled courses. Every endpoint requires an authenticated session.
@@ -20,7 +21,7 @@ example.
 
 import uuid
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.exc import IntegrityError
@@ -28,16 +29,19 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.models.certificate import Certificate
 from app.models.course import Course, Lesson, Module
 from app.models.enrolment import Enrolment, EnrolmentStatus
 from app.models.lesson_progress import LessonProgress
 from app.models.user import User
 from app.schemas.course import (
+    CertificateResponse,
     CourseDetail,
     CourseListItem,
     LessonCompleteResponse,
     LessonDetailRead,
 )
+from app.services import gamification as gamification_svc
 
 router = APIRouter(tags=["courses"])
 
@@ -341,6 +345,7 @@ def mark_lesson_complete(
         .first()
     )
     if existing is not None:
+        # Idempotent repeat — no XP awarded, no new badges.
         return {
             "lesson_id": lesson.id,
             "completed": True,
@@ -349,6 +354,8 @@ def mark_lesson_complete(
             "progress_percent": compute_progress(
                 db, current.id, module.course_id
             ),
+            "xp_awarded": 0,
+            "new_badges": [],
         }
 
     row = LessonProgress(
@@ -369,14 +376,127 @@ def mark_lesson_complete(
             .filter(LessonProgress.lesson_id == lesson_id)
             .one()
         )
+        db.refresh(row)
+        return {
+            "lesson_id": lesson.id,
+            "completed": True,
+            "completed_at": row.completed_at,
+            "course_id": module.course_id,
+            "progress_percent": compute_progress(
+                db, current.id, module.course_id
+            ),
+            "xp_awarded": 0,
+            "new_badges": [],
+        }
     db.refresh(row)
+
+    progress = compute_progress(db, current.id, module.course_id)
+    # Count lesson_progress rows for this learner in this course (badge check).
+    total_completed = (
+        db.query(LessonProgress)
+        .join(Lesson, Lesson.id == LessonProgress.lesson_id)
+        .join(Module, Module.id == Lesson.module_id)
+        .filter(Module.course_id == module.course_id)
+        .filter(LessonProgress.learner_id == current.id)
+        .count()
+    )
+    badges_before = list(
+        gamification_svc.get_or_create(current.id, db).badges
+    )
+    gamification_svc.award_lesson_xp(
+        current.id,
+        db=db,
+        total_lessons_completed=total_completed,
+        course_complete=(progress == 100),
+    )
+
+    # Issue certificate if this completion pushed progress to 100 % (S27).
+    certificate_id: Optional[uuid.UUID] = None
+    if progress == 100:
+        certificate_id = _issue_certificate_if_complete(
+            db, learner_id=current.id, course_id=module.course_id
+        )
+
+    db.commit()
+    g_row = gamification_svc.get_or_create(current.id, db)
+    new_badges = [b for b in g_row.badges if b not in badges_before]
 
     return {
         "lesson_id": lesson.id,
         "completed": True,
         "completed_at": row.completed_at,
         "course_id": module.course_id,
-        "progress_percent": compute_progress(
-            db, current.id, module.course_id
-        ),
+        "progress_percent": progress,
+        "xp_awarded": gamification_svc.XP_LESSON_COMPLETE,
+        "new_badges": new_badges,
+        "certificate_id": certificate_id,
     }
+
+
+# ─────────────────────────────────────────────────────────────
+# Certificate helpers (S27)
+# ─────────────────────────────────────────────────────────────
+
+
+def _issue_certificate_if_complete(
+    db: Session, *, learner_id: uuid.UUID, course_id: uuid.UUID
+) -> Optional[uuid.UUID]:
+    """Insert a Certificate row if one does not already exist.
+
+    Returns the certificate UUID (new or existing). The unique constraint
+    on (learner_id, course_id) is the idempotency backstop; we check
+    first to avoid burning a savepoint on the happy path.
+    """
+    existing = (
+        db.query(Certificate)
+        .filter(Certificate.learner_id == learner_id)
+        .filter(Certificate.course_id == course_id)
+        .first()
+    )
+    if existing is not None:
+        return existing.id
+
+    cert = Certificate(learner_id=learner_id, course_id=course_id)
+    db.add(cert)
+    db.flush()  # populate cert.id before commit
+    return cert.id
+
+
+# ─────────────────────────────────────────────────────────────
+# GET /courses/{course_id}/certificate  (S27)
+# ─────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/courses/{course_id}/certificate",
+    response_model=CertificateResponse,
+)
+def get_certificate(
+    course_id: uuid.UUID,
+    current: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> CertificateResponse:
+    """Return the learner's certificate for a completed course.
+
+    404 if no certificate exists (course not yet completed or not enrolled).
+    The same 404 is returned for unknown course IDs to prevent enumeration.
+    """
+    course = db.get(Course, course_id)
+    if course is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found.")
+
+    cert = (
+        db.query(Certificate)
+        .filter(Certificate.learner_id == current.id)
+        .filter(Certificate.course_id == course_id)
+        .first()
+    )
+    if cert is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found.")
+
+    return CertificateResponse(
+        id=cert.id,
+        learner_name=current.name,
+        course_title=course.title,
+        issued_at=cert.issued_at,
+    )

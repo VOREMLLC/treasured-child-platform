@@ -98,6 +98,19 @@ def register(
             detail="An account with that email already exists.",
         )
     db.refresh(user)
+
+    email_service.send_email(
+        to=user.email,
+        subject="Welcome to Treasured Child Academy!",
+        body=(
+            f"Hi {user.name},\n\n"
+            "Your account has been created. Once activated, you can sign in "
+            "at the student portal and start learning.\n\n"
+            "Welcome aboard!\n"
+            "— The Treasured Child Academy Team"
+        ),
+    )
+
     return user
 
 

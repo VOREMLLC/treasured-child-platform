@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.api import admin, applications, auth, courses, me, payments
+from app.api import admin, agents, applications, auth, courses, enrolments, me, payments, quizzes
 from app.core.config import settings
 from app.core.rate_limit import limiter
 
@@ -48,7 +48,10 @@ app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(me.router)
 app.include_router(payments.router)
+app.include_router(enrolments.router)
+app.include_router(quizzes.router)
 app.include_router(courses.router)
+app.include_router(agents.router)
 
 
 @app.get("/healthz")

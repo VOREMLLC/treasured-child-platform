@@ -106,6 +106,10 @@ class LessonCompleteResponse(BaseModel):
     Includes the recomputed course progress_percent (from the single
     ``compute_progress`` helper) so the frontend can flip the
     progress bar in place without a second round trip.
+
+    xp_awarded is 0 on idempotent (repeated) calls — XP is only given once.
+    new_badges lists any badges earned this call (empty list if none).
+    certificate_id is set when this completion triggered a new certificate.
     """
 
     lesson_id: uuid.UUID
@@ -113,3 +117,20 @@ class LessonCompleteResponse(BaseModel):
     completed_at: datetime
     course_id: uuid.UUID
     progress_percent: int
+    xp_awarded: int = 0
+    new_badges: list = []
+    certificate_id: Optional[uuid.UUID] = None
+
+
+# ─────────────────────────────────────────────────────────────
+# GET /courses/{id}/certificate — S27
+# ─────────────────────────────────────────────────────────────
+
+
+class CertificateResponse(BaseModel):
+    """Payload for GET /courses/{course_id}/certificate."""
+
+    id: uuid.UUID
+    learner_name: str
+    course_title: str
+    issued_at: datetime
