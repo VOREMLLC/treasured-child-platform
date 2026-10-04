@@ -24,7 +24,7 @@ payment status update intact.
 import json
 import secrets
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError
@@ -56,6 +56,20 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 def _make_reference() -> str:
     """Server-generated, unique payment reference."""
     return f"TCS-{secrets.token_urlsafe(12)}"
+
+
+def _has_published_course(slug: Optional[str], db: Session) -> bool:
+    from app.models.course import Course
+
+    if not slug:
+        return False
+    return (
+        db.query(Course.id)
+        .filter(Course.slug == slug)
+        .filter(Course.published.is_(True))
+        .first()
+        is not None
+    )
 
 
 def _auto_enrol(payment: Payment, db: Session) -> None:
@@ -213,6 +227,16 @@ def initialize_payment(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(e),
+        )
+
+    # A priced programme with no published course would take the parent's
+    # money and enrol them in nothing (_auto_enrol finds no course).
+    if payload.purpose is PaymentPurpose.programme and not _has_published_course(
+        payload.target, db
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="This programme is not open for enrolment yet.",
         )
 
     payment = Payment(

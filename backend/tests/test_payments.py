@@ -93,9 +93,40 @@ def test_initialize_fees_creates_pending_payment_with_canonical_amount(
     assert row.purpose is PaymentPurpose.fees
 
 
+def _publish_course(db_session, slug: str) -> None:
+    from app.models.course import Course, CourseType
+
+    db_session.add(
+        Course(
+            slug=slug,
+            title=slug,
+            type=CourseType.online,
+            level="Online",
+            summary="",
+            is_paid=True,
+            price_kobo=PROGRAMME_PRICES_KOBO[slug],
+            published=True,
+        )
+    )
+    db_session.commit()
+
+
+def test_initialize_programme_without_published_course_returns_422(
+    payer_client, db_session
+):
+    """Never take money for a programme that has no course to enrol into."""
+    response = payer_client.post(
+        "/payments/initialize",
+        json={"purpose": "programme", "target": "bece-prep"},
+    )
+    assert response.status_code == 422
+    assert db_session.query(Payment).count() == 0
+
+
 def test_initialize_programme_uses_programme_price(
     payer_client, db_session
 ):
+    _publish_course(db_session, "bece-prep")
     response = payer_client.post(
         "/payments/initialize",
         json={"purpose": "programme", "target": "bece-prep"},
