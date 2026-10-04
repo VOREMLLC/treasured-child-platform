@@ -1,9 +1,15 @@
-import Link from "next/link";
 import Image from "next/image";
-import { Nav } from "@/components/Nav";
+
+import { ButtonLink } from "@/components/Button";
 import { Footer } from "@/components/Footer";
-import { SectionHead } from "@/components/SectionHead";
+import { Icon, type IconName } from "@/components/Icon";
+import { Nav } from "@/components/Nav";
 import { ProgrammeCard } from "@/components/ProgrammeCard";
+import { getProgramme, type Programme } from "@/lib/programmes";
+
+const FEATURED = ["primary", "junior-secondary", "bece-prep", "ai-data"]
+  .map((slug) => getProgramme(slug))
+  .filter((p): p is Programme => p !== undefined);
 
 export default function Home() {
   return (
@@ -11,166 +17,103 @@ export default function Home() {
       <Nav />
 
       {/* ===== Hero ===== */}
-      <header
-        className="px-[6vw] pt-[70px] pb-[84px]"
-        style={{
-          background:
-            "radial-gradient(900px 520px at 82% -10%, rgba(47,127,212,0.18) 0, transparent 60%), var(--bg)",
-        }}
-      >
-        <div className="grid md:grid-cols-[1.05fr_.95fr] gap-11 items-center max-w-[1180px] mx-auto">
+      <header className="overflow-hidden bg-[linear-gradient(180deg,var(--blue-soft),var(--bg))]">
+        <div className="wrap grid items-center gap-10 py-10 sm:py-16 md:grid-cols-[1.1fr_.9fr]">
           <div>
-            <span className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.20em] text-gold mb-4">
-              <span className="w-[7px] h-[7px] bg-gold rotate-45 inline-block" />
-              Treasured Child School, Orerokpe
-            </span>
-            <h1 className="font-display font-bold text-paper text-[clamp(34px,5vw,56px)] leading-[1.08] tracking-tight mb-2.5">
+            <h1 className="max-w-[16ch] font-display text-[36px] font-bold text-ink sm:text-h1 lg:text-[52px]">
               A school where every child is treasured.
             </h1>
-            <p className="font-display italic text-gold text-[clamp(17px,2.3vw,22px)] mb-4">
-              Knowledge · character · purpose.
+            <p className="mt-4 max-w-[46ch] text-label text-muted">
+              Nursery to secondary in Orerokpe, Delta State, plus online
+              classes your child can take from anywhere in Nigeria.
             </p>
-            <p className="text-[17px] text-muted max-w-[500px] mb-6">
-              Nursery, primary and secondary in Delta State — and a growing set
-              of online programmes that bring our classrooms to learners
-              anywhere in Nigeria.
-            </p>
-
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/apply"
-                className="inline-flex items-center px-5 py-3 rounded-pill bg-gradient-to-b from-blue to-blue-deep text-white text-[15px] font-semibold shadow-[0_10px_24px_-10px_rgba(31,99,201,0.55)] hover:from-blue-bright transition"
-              >
-                Apply for admission
-              </Link>
-              <Link
-                href="/pay"
-                className="inline-flex items-center px-5 py-3 rounded-pill bg-gradient-to-b from-gold to-gold-deep text-ink text-[15px] font-semibold hover:brightness-105 transition"
-              >
-                Pay fees online
-              </Link>
-              <Link
-                href="/login"
-                className="inline-flex items-center px-5 py-3 rounded-pill border border-line text-paper text-[15px] font-semibold hover:border-blue-bright transition"
-              >
-                Student portal
-              </Link>
-            </div>
-
-            <div className="flex flex-wrap gap-8 mt-8">
-              <Stat value="From 18 to 200" label="learners since founding" />
-              <Stat value="3 acres" label="of campus in Orerokpe" />
-              <Stat value="K–12" label="nursery to senior secondary" />
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <ButtonLink href="/apply" size="lg">
+                Apply now
+              </ButtonLink>
+              <ButtonLink href="/pay" size="lg" variant="secondary" icon="card">
+                Pay fees
+              </ButtonLink>
             </div>
           </div>
 
-          <div className="grid place-items-center order-first md:order-none">
-            <span className="bg-white rounded-xl shadow-s p-7 inline-flex">
-              <Image
-                src="/logo.png"
-                alt=""
-                width={240}
-                height={196}
-                className="object-contain w-[180px] h-[148px] md:w-[240px] md:h-[196px]"
-                priority
-              />
-            </span>
-          </div>
+          <HeroArt />
         </div>
       </header>
 
-      {/* ===== Why us ===== */}
-      <section id="why" className="px-[6vw] py-16 max-w-[1180px] mx-auto">
-        <SectionHead
-          kicker="Why families choose us"
-          heading="Strong teaching, warm community, real outcomes."
-          sub="We pair classroom discipline with modern tools, so children learn how to think — not just what to memorise."
-        />
-        <div className="grid md:grid-cols-3 gap-6">
-          <FeatureCard number="01" title="Small class sizes">
-            Every learner is known by name. Teachers know each child&apos;s
-            pace, strengths and gaps.
-          </FeatureCard>
-          <FeatureCard number="02" title="Modern curriculum">
-            Foundational subjects plus digital literacy and AI fundamentals —
-            preparing children for the world they will live in.
-          </FeatureCard>
-          <FeatureCard number="03" title="Safe and structured">
-            Strict child-safety guardrails apply on campus and inside our
-            online lessons. Parents stay informed.
-          </FeatureCard>
+      {/* ===== Stats ===== */}
+      <section aria-label="About the school in numbers" className="wrap">
+        <dl className="grid grid-cols-3 gap-3 rounded-card border border-line bg-card p-4 shadow-s sm:p-6">
+          <Stat value="200+" label="happy learners" />
+          <Stat value="3 acres" label="of green campus" />
+          <Stat value="Ages 3 to 17" label="nursery to SS 3" />
+        </dl>
+      </section>
+
+      {/* ===== Why families choose us: alternating rows ===== */}
+      <section className="wrap py-16">
+        <h2 className="max-w-[22ch] font-display text-[28px] font-bold text-ink sm:text-h2">
+          Why families choose Treasured Child
+        </h2>
+        <div className="mt-10 space-y-12">
+          <WhyRow
+            icon="heart"
+            tone="blue"
+            title="Every child is known by name"
+            body="Classes stay small, so teachers see each child's pace, strengths and gaps. Many of our families came because a neighbour told them."
+          />
+          <WhyRow
+            flip
+            icon="sparkle"
+            tone="gold"
+            title="Strong basics, ready for tomorrow"
+            body="Reading, writing and maths come first. On top of that, children learn computers and the basics of AI, with safe tools made for young people."
+          />
+          <WhyRow
+            icon="shield"
+            tone="blue"
+            title="Safe on campus and online"
+            body="Our online helper only talks about the lesson, never asks for personal details, and passes worries to a real teacher. Parents stay in the loop."
+          />
         </div>
       </section>
 
       {/* ===== Programmes ===== */}
-      <section
-        id="programmes"
-        className="px-[6vw] py-16 max-w-[1180px] mx-auto"
-      >
-        <SectionHead
-          kicker="Programmes"
-          heading="School and online — one platform, two engines."
-          sub="Three featured programmes to start with. The full catalogue opens after sign-in."
-        />
-        <div className="grid md:grid-cols-3 gap-6">
-          <ProgrammeCard
-            href="/programmes/junior-secondary"
-            bandGradient="linear-gradient(135deg, var(--blue-deep), var(--navy))"
-            bandLabel="Junior secondary"
-            pill="School · on campus"
-            title="JSS 1–3"
-          >
-            The core academic years that prepare learners for BECE and senior
-            secondary.
-          </ProgrammeCard>
-          <ProgrammeCard
-            href="/programmes/bece-prep"
-            bandGradient="linear-gradient(135deg, var(--blue), var(--blue-bright))"
-            bandLabel="BECE prep"
-            pill="Online · paid"
-            title="Common entrance & BECE"
-          >
-            Targeted online practice in maths, English and verbal reasoning
-            with the AI tutor on hand.
-          </ProgrammeCard>
-          <ProgrammeCard
-            href="/programmes/ai-data"
-            bandGradient="linear-gradient(135deg, var(--gold-deep), var(--gold))"
-            bandTextColor="#2a1f00"
-            bandLabel="AI & data"
-            pill="Online · flagship"
-            pillVariant="gold"
-            title="AI & data analytics"
-          >
-            An accessible introduction to AI and data — designed for ages 12+.
-            Project-based, with safety guardrails throughout.
-          </ProgrammeCard>
+      <section id="programmes" className="wrap py-8">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <h2 className="font-display text-[28px] font-bold text-ink sm:text-h2">
+            Programmes and fees
+          </h2>
+          <ButtonLink href="/programmes" variant="ghost" iconRight="arrow-right">
+            See all programmes
+          </ButtonLink>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {FEATURED.map((p) => (
+            <ProgrammeCard key={p.slug} programme={p} />
+          ))}
         </div>
       </section>
 
-      {/* ===== CTA band ===== */}
-      <section
-        id="apply"
-        className="px-[6vw] py-16 max-w-[1180px] mx-auto text-center"
-      >
-        <SectionHead
-          kicker="Ready to apply?"
-          heading="Take the next step."
-          sub="Online application takes about three minutes. We'll be in touch within 48 hours."
-        />
-        <div className="flex flex-wrap gap-3 justify-center">
-          <Link
-            href="/apply"
-            className="inline-flex items-center px-5 py-3 rounded-pill bg-gradient-to-b from-blue to-blue-deep text-white font-semibold shadow-[0_10px_24px_-10px_rgba(31,99,201,0.55)] hover:from-blue-bright transition"
-          >
-            Apply for admission
-          </Link>
-          <Link
-            href="/contact"
-            className="inline-flex items-center px-5 py-3 rounded-pill border border-line text-paper font-semibold hover:border-blue-bright transition"
-          >
-            Talk to admissions
-          </Link>
+      {/* ===== Closing call to action ===== */}
+      <section className="wrap py-16">
+        <div className="relative overflow-hidden rounded-card bg-navy px-6 py-10 text-white sm:px-12">
+          <span
+            aria-hidden
+            className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-gold opacity-90"
+          />
+          <h2 className="relative max-w-[20ch] font-display text-[28px] font-bold sm:text-h2">
+            Ready when you are.
+          </h2>
+          <p className="relative mt-2 max-w-[44ch] text-label opacity-90">
+            Applying takes about two minutes. We&apos;ll call or WhatsApp
+            you within 48 hours.
+          </p>
+          <div className="relative mt-6 flex flex-col gap-3 sm:flex-row">
+            <ButtonLink href="/apply" size="lg" className="!bg-white !text-navy hover:!bg-blue-soft">
+              Apply now
+            </ButtonLink>
+          </div>
         </div>
       </section>
 
@@ -179,36 +122,87 @@ export default function Home() {
   );
 }
 
-/* ---- Page-specific helpers (only used on this page) ---- */
+/* ---- Page helpers ---- */
 
-function Stat({ value, label }: { value: string; label: string }) {
+/**
+ * Brand composition shown in place of photos.
+ * TODO(photos): when real campus photos arrive, add them to /public and
+ * swap the logo below for e.g.
+ *   <Image src="/campus/hero.jpg" alt="Pupils at morning assembly"
+ *          fill sizes="(min-width: 768px) 45vw, 90vw" className="object-cover" priority />
+ * inside the rounded frame. Use real photos only, never stock.
+ */
+function HeroArt() {
   return (
-    <div className="flex flex-col gap-1">
-      <b className="font-display text-[28px] font-bold text-paper leading-none">
-        {value}
-      </b>
-      <span className="text-[12.5px] text-muted">{label}</span>
+    <div aria-hidden className="relative mx-auto aspect-square w-full max-w-[380px]">
+      <span className="absolute inset-[6%] rounded-full bg-blue-soft" />
+      <span className="absolute right-[4%] top-[6%] h-[26%] w-[26%] rounded-full bg-gold" />
+      <span className="absolute bottom-[8%] left-[2%] h-[16%] w-[16%] rounded-full border-[6px] border-blue" />
+      <span className="absolute bottom-[18%] right-[8%] grid h-14 w-14 place-items-center rounded-control bg-surface text-gold-text shadow">
+        <Icon name="star" size={28} />
+      </span>
+      <span className="absolute left-[8%] top-[22%] grid h-14 w-14 place-items-center rounded-control bg-surface text-blue-ink shadow">
+        <Icon name="book" size={28} />
+      </span>
+      <div className="absolute inset-[22%] grid place-items-center rounded-card bg-white p-4 shadow">
+        <Image
+          src="/logo.png"
+          alt=""
+          width={348}
+          height={284}
+          priority
+          className="h-auto w-full object-contain"
+        />
+      </div>
     </div>
   );
 }
 
-function FeatureCard({
-  number,
-  title,
-  children,
-}: {
-  number: string;
-  title: string;
-  children: React.ReactNode;
-}) {
+function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <article className="bg-card border border-line rounded-lg p-6 transition hover:-translate-y-1 hover:shadow hover:border-blue-deep">
-      <div className="w-11 h-11 rounded-md grid place-items-center mb-3.5 bg-gradient-to-b from-blue to-blue-deep text-white font-display text-[20px] font-semibold">
-        {number}
-      </div>
-      <h3 className="font-display text-[19px] text-paper mb-1.5">{title}</h3>
-      <p className="text-muted text-[14.5px]">{children}</p>
-    </article>
+    <div className="flex flex-col-reverse text-center">
+      <dt className="text-caption text-muted">{label}</dt>
+      <dd className="font-display text-title font-bold text-ink sm:text-h3">
+        {value}
+      </dd>
+    </div>
   );
 }
 
+function WhyRow({
+  icon,
+  tone,
+  title,
+  body,
+  flip = false,
+}: {
+  icon: IconName;
+  tone: "blue" | "gold";
+  title: string;
+  body: string;
+  flip?: boolean;
+}) {
+  return (
+    <div className="grid items-center gap-6 md:grid-cols-2 md:gap-12">
+      <div
+        aria-hidden
+        className={`relative grid h-48 place-items-center overflow-hidden rounded-card sm:h-56 ${tone === "gold" ? "bg-gold-soft" : "bg-blue-soft"} ${flip ? "md:order-2" : ""}`}
+      >
+        <span
+          className={`absolute -bottom-8 -left-8 h-32 w-32 rounded-full ${tone === "gold" ? "bg-gold" : "bg-blue"} opacity-20`}
+        />
+        <span
+          className={`grid h-24 w-24 place-items-center rounded-full ${tone === "gold" ? "bg-gold text-ink" : "bg-blue text-white"}`}
+        >
+          <Icon name={icon} size={44} />
+        </span>
+      </div>
+      <div>
+        <h3 className="font-display text-title font-bold text-ink sm:text-h3">
+          {title}
+        </h3>
+        <p className="mt-2 max-w-[48ch] text-body text-muted">{body}</p>
+      </div>
+    </div>
+  );
+}

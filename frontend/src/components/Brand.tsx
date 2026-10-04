@@ -3,32 +3,33 @@ import Image from "next/image";
 
 interface BrandProps {
   className?: string;
-  alt?: string;
   priority?: boolean;
+  href?: string;
 }
 
-export function Brand({
-  className = "",
-  alt = "Treasured Child School logo",
-  priority = false,
-}: BrandProps) {
+export function Brand({ className = "", priority = false, href = "/" }: BrandProps) {
   return (
-    <Link href="/" className={`flex items-center gap-3 ${className}`}>
-      <span className="bg-white rounded-[14px] shadow-s p-1.5 inline-flex">
+    <Link
+      href={href}
+      className={`flex min-h-12 items-center gap-3 rounded-control ${className}`}
+    >
+      {/* The logo PNG has its own light background, so it sits on a
+          light chip in both themes. */}
+      <span className="inline-flex rounded-control bg-white p-1 shadow-s">
         <Image
           src="/logo.png"
-          alt={alt}
-          width={36}
-          height={36}
-          className="object-contain"
+          alt=""
+          width={40}
+          height={33}
+          className="h-[33px] w-10 object-contain"
           priority={priority}
         />
       </span>
-      <span className="font-display font-bold text-paper text-[17px] leading-none">
+      <span className="font-display text-title font-bold leading-none text-ink">
         Treasured Child
-        <small className="block font-body font-semibold text-[9.5px] tracking-[0.16em] uppercase text-gold pt-1">
-          Nursery · primary · secondary
-        </small>
+        <span className="block pt-1 font-body text-caption font-semibold text-muted">
+          School, Orerokpe
+        </span>
       </span>
     </Link>
   );

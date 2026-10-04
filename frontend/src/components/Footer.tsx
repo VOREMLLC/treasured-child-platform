@@ -1,42 +1,43 @@
 import Link from "next/link";
+
 import { Brand } from "./Brand";
+import { Icon, type IconName } from "./Icon";
+import { SCHOOL_PHONE_DISPLAY, SCHOOL_PHONE_TEL, WHATSAPP_URL } from "@/lib/contact";
 
 export function Footer() {
   return (
-    <footer
-      id="contact"
-      className="bg-surface border-t border-line px-[6vw] py-12 text-muted text-[14px]"
-    >
-      <div className="grid grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr_1fr] gap-8 max-w-[1180px] mx-auto">
+    <footer className="mt-16 border-t border-line bg-surface">
+      <div className="wrap grid gap-8 py-12 sm:grid-cols-2 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
-          <Brand className="mb-3.5" alt="" />
-          <p>Orerokpe, Delta State, Nigeria.</p>
+          <Brand />
+          <p className="mt-3 flex items-center gap-2 text-body text-muted">
+            <Icon name="pin" size={20} />
+            Orerokpe, Delta State, Nigeria
+          </p>
         </div>
 
         <FooterCol title="School">
-          <FooterLink href="/about">About</FooterLink>
-          <FooterLink href="/about#leadership">Leadership</FooterLink>
-          <FooterLink href="/#programmes">Programmes</FooterLink>
+          <FooterLink href="/about">About us</FooterLink>
+          <FooterLink href="/programmes">Programmes</FooterLink>
+          <FooterLink href="/apply">Apply now</FooterLink>
+          <FooterLink href="/pay">Pay fees</FooterLink>
         </FooterCol>
 
-        <FooterCol title="Online">
-          <FooterLink href="/programmes/bece-prep">BECE prep</FooterLink>
-          <FooterLink href="/programmes/ai-data">AI &amp; data</FooterLink>
-          <FooterLink href="/login">Sign in</FooterLink>
-        </FooterCol>
-
-        <FooterCol title="Contact">
-          <FooterLink href="mailto:hello@treasuredchild.example">
-            hello@treasuredchild.example
+        <FooterCol title="Talk to us">
+          <FooterLink href={WHATSAPP_URL} icon="whatsapp">
+            WhatsApp us
           </FooterLink>
-          <FooterLink href="tel:+2347035918488">+234 703 591 8488</FooterLink>
-          <FooterLink href="/pay">Pay fees online</FooterLink>
+          <FooterLink href={SCHOOL_PHONE_TEL} icon="phone">
+            {SCHOOL_PHONE_DISPLAY}
+          </FooterLink>
+          <FooterLink href="/login" icon="user">
+            Sign in
+          </FooterLink>
         </FooterCol>
       </div>
 
-      <p className="border-t border-line mt-7 pt-4 text-center text-[12.5px] text-muted">
-        © Treasured Child School. Content is placeholder until the proprietor
-        supplies copy and photos.
+      <p className="wrap border-t border-line py-5 text-caption text-muted">
+        © {new Date().getFullYear()} Treasured Child School
       </p>
     </footer>
   );
@@ -51,31 +52,47 @@ function FooterCol({
 }) {
   return (
     <div>
-      <h4 className="font-display text-[14px] text-paper mb-3 font-semibold">
+      <h2 className="mb-2 font-display text-title font-bold text-ink">
         {title}
-      </h4>
-      {children}
+      </h2>
+      <ul>{children}</ul>
     </div>
   );
 }
 
 function FooterLink({
   href,
+  icon,
   children,
 }: {
   href: string;
+  icon?: IconName;
   children: React.ReactNode;
 }) {
-  if (href.startsWith("/")) {
-    return (
-      <Link href={href} className="block py-1 hover:text-blue-soft transition">
-        {children}
-      </Link>
-    );
-  }
-  return (
-    <a href={href} className="block py-1 hover:text-blue-soft transition">
+  const cls =
+    "inline-flex min-h-12 items-center gap-2 text-body text-muted transition-colors duration-200 hover:text-blue-ink";
+  const inner = (
+    <>
+      {icon && <Icon name={icon} size={20} />}
       {children}
-    </a>
+    </>
+  );
+  return (
+    <li>
+      {href.startsWith("/") ? (
+        <Link href={href} className={cls}>
+          {inner}
+        </Link>
+      ) : (
+        <a
+          href={href}
+          className={cls}
+          target={href.startsWith("http") ? "_blank" : undefined}
+          rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+        >
+          {inner}
+        </a>
+      )}
+    </li>
   );
 }

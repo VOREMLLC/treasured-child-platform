@@ -1,56 +1,52 @@
 import Link from "next/link";
 
-interface ProgrammeCardProps {
-  href: string;
-  bandGradient: string;
-  bandLabel: string;
-  bandTextColor?: string;
-  pill: string;
-  pillVariant?: "blue" | "gold";
-  title: string;
-  children: React.ReactNode;
-}
+import { buttonClasses } from "./Button";
+import { Icon } from "./Icon";
+import { formatNaira, type Programme } from "@/lib/programmes";
 
-export function ProgrammeCard({
-  href,
-  bandGradient,
-  bandLabel,
-  bandTextColor = "#fff",
-  pill,
-  pillVariant = "blue",
-  title,
-  children,
-}: ProgrammeCardProps) {
+/**
+ * A programme card with its price and ONE action: school programmes
+ * lead to the application form, online ones to payment.
+ */
+export function ProgrammeCard({ programme: p }: { programme: Programme }) {
+  const online = p.kind === "online";
   return (
-    <Link
-      href={href}
-      className="bg-card border border-line rounded-lg overflow-hidden flex flex-col transition hover:-translate-y-1 hover:shadow hover:border-blue-deep group"
-    >
-      <div
-        className="h-24 grid place-items-center font-display text-[24px] tracking-tight"
-        style={{ background: bandGradient, color: bandTextColor }}
-      >
-        {bandLabel}
-      </div>
-      <div className="p-5 pt-5 pb-6">
+    <article className="flex flex-col rounded-card border border-line bg-card p-5 shadow-s">
+      <div className="mb-4 flex items-center gap-3">
         <span
-          className={
-            "inline-block text-[12px] font-semibold px-2.5 py-1 rounded-pill " +
-            (pillVariant === "gold"
-              ? "bg-[rgba(239,183,0,0.14)] text-gold"
-              : "bg-[rgba(47,127,212,0.14)] text-blue-soft")
-          }
+          className={`grid h-12 w-12 place-items-center rounded-control ${online ? "bg-gold-soft text-gold-text" : "bg-blue-soft text-blue-ink"}`}
         >
-          {pill}
+          <Icon name={p.icon} />
         </span>
-        <h3 className="font-display text-[19px] text-paper mt-2 mb-1.5">
-          {title}
-        </h3>
-        <p className="text-muted text-[14.5px] mb-3.5">{children}</p>
-        <span className="text-blue-soft font-semibold text-[14px] inline-block transition group-hover:translate-x-0.5">
-          Learn more →
+        <span className="text-caption font-semibold text-muted">
+          {online ? "Online" : "On campus"}, {p.ageRange}
         </span>
       </div>
-    </Link>
+      <h3 className="font-display text-title font-bold text-ink">
+        <Link
+          href={`/programmes/${p.slug}`}
+          className="rounded-control hover:text-blue-ink"
+        >
+          {p.title}
+        </Link>
+      </h3>
+      <p className="mt-1 flex-1 text-body text-muted">{p.summary}</p>
+      <p className="mt-4 text-body text-muted">
+        <span className="font-display text-title font-bold text-ink">
+          {formatNaira(p.priceNaira)}
+        </span>{" "}
+        {p.pricePer}
+      </p>
+      <Link
+        href={online ? `/pay?for=${p.slug}` : "/apply"}
+        className={buttonClasses({
+          variant: online ? "primary" : "secondary",
+          full: true,
+          className: "mt-4",
+        })}
+      >
+        {online ? "Pay fees" : "Apply now"}
+      </Link>
+    </article>
   );
 }

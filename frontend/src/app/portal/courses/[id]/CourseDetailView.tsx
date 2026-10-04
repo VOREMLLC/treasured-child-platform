@@ -1,229 +1,163 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
-import { ApiError, getCourse, type CourseDetail } from "@/lib/api";
+import { ButtonLink } from "@/components/Button";
+import { EmptyState } from "@/components/EmptyState";
+import { Icon } from "@/components/Icon";
+import { ProgressBar } from "@/components/ProgressBar";
+import { Skeleton, SkeletonGroup } from "@/components/Skeleton";
+import { ErrorCard, SignInPrompt } from "@/components/StatusViews";
+import { getCourse, type CourseDetail, type LessonRead } from "@/lib/api";
+import { useApi } from "@/lib/useApi";
 
-type State =
-  | { kind: "loading" }
-  | { kind: "needs-signin" }
-  | { kind: "forbidden" }
-  | { kind: "error"; message: string }
-  | { kind: "ready"; course: CourseDetail };
+/** Lessons in the order the learner sees them. */
+function orderedLessons(course: CourseDetail): LessonRead[] {
+  return [...course.modules]
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .flatMap((m) => [...m.lessons].sort((a, b) => a.sort_order - b.sort_order));
+}
 
 export function CourseDetailView({ courseId }: { courseId: string }) {
-  const [state, setState] = useState<State>({ kind: "loading" });
-
-  useEffect(() => {
-    let cancelled = false;
-    getCourse(courseId)
-      .then((course) => {
-        if (!cancelled) setState({ kind: "ready", course });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err instanceof ApiError && err.status === 401) {
-          setState({ kind: "needs-signin" });
-        } else if (err instanceof ApiError && err.status === 403) {
-          setState({ kind: "forbidden" });
-        } else if (err instanceof ApiError) {
-          setState({ kind: "error", message: err.message });
-        } else {
-          setState({
-            kind: "error",
-            message: "Something unexpected happened. Please try again.",
-          });
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [courseId]);
+  const { state, reload } = useApi(() => getCourse(courseId), [courseId]);
 
   if (state.kind === "loading") {
     return (
-      <div
-        role="status"
-        className="bg-card border border-line rounded-lg p-6 text-muted text-center"
-      >
-        Loading…
-      </div>
+      <SkeletonGroup label="Opening your course">
+        <Skeleton className="mb-3 h-10 w-2/3" />
+        <Skeleton className="mb-6 h-3 w-full max-w-[420px] rounded-full" />
+        <Skeleton className="mb-8 h-14 w-full sm:w-56" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }, (_, i) => (
+            <Skeleton key={i} className="h-14 w-full" />
+          ))}
+        </div>
+      </SkeletonGroup>
     );
   }
-
-  if (state.kind === "needs-signin") {
-    return (
-      <article className="bg-card border border-line rounded-lg p-8 text-center">
-        <p className="text-muted text-[15px] mb-4">
-          Please sign in to view this course.
-        </p>
-        <Link
-          href="/login"
-          className="inline-flex items-center px-5 py-3 rounded-pill bg-gradient-to-b from-blue to-blue-deep text-white font-semibold transition"
-        >
-          Sign in
-        </Link>
-      </article>
-    );
+  if (state.kind === "signed-out") {
+    return <SignInPrompt next={`/portal/courses/${courseId}`} />;
   }
-
   if (state.kind === "forbidden") {
     return (
-      <article
-        role="alert"
-        className="bg-card border border-danger/40 rounded-lg p-8 text-center"
+      <EmptyState
+        icon="lock"
+        title="You have not joined this course yet"
+        actions={
+          <ButtonLink href="/programmes" variant="secondary">
+            See programmes
+          </ButtonLink>
+        }
       >
-        <div className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.22em] text-danger mb-3">
-          Not enrolled
-        </div>
-        <p className="text-muted text-[15px] max-w-[460px] mx-auto mb-6">
-          You don&apos;t have access to this course. Enrol from the
-          programmes catalogue to get started.
-        </p>
-        <Link
-          href="/programmes"
-          className="inline-flex items-center px-5 py-3 rounded-pill border border-line text-paper font-semibold hover:border-blue-bright transition"
-        >
-          Browse programmes
-        </Link>
-      </article>
+        Join the course to open its lessons.
+      </EmptyState>
     );
   }
-
   if (state.kind === "error") {
-    return (
-      <article
-        role="alert"
-        className="bg-card border border-danger/40 rounded-lg p-6 text-center"
-      >
-        <p className="text-danger text-[15px]">{state.message}</p>
-      </article>
-    );
+    return <ErrorCard message={state.message} onRetry={reload} />;
   }
 
-  const { course } = state;
-  const typeLabel = course.type === "online" ? "Online" : "On campus";
-  const totalLessons = course.modules.reduce(
-    (sum, m) => sum + m.lessons.length,
-    0,
-  );
-  const completedLessons = course.modules.reduce(
-    (sum, m) => sum + m.lessons.filter((l) => l.completed).length,
-    0,
-  );
+  const course = state.data;
+  const lessons = orderedLessons(course);
+  const done = lessons.filter((l) => l.completed).length;
+  const next = lessons.find((l) => !l.completed);
+  const lessonHref = (id: string) => `/portal/courses/${course.id}/lessons/${id}`;
 
   return (
     <>
-      {/* Header */}
-      <header
-        className="px-6 sm:px-10 py-10 rounded-xl mb-8"
-        style={{
-          background:
-            course.type === "online"
-              ? "linear-gradient(135deg, var(--blue), var(--blue-bright))"
-              : "linear-gradient(135deg, var(--blue-deep), var(--navy))",
-          color: "#fff",
-        }}
-      >
-        <span className="inline-block text-[12px] font-semibold px-2.5 py-1 rounded-pill bg-[rgba(255,255,255,0.18)] mb-3">
-          {typeLabel} · {course.level}
-        </span>
-        <h1 className="font-display font-bold text-[clamp(28px,4.5vw,44px)] leading-[1.1] tracking-tight mb-2">
+      <header className="mb-8">
+        <p className="text-caption font-semibold text-muted">
+          {course.type === "online" ? "Online" : "On campus"}
+          {course.level ? `, ${course.level}` : ""}
+        </p>
+        <h1 className="mt-1 font-display text-[32px] font-bold text-ink sm:text-h2">
           {course.title}
         </h1>
-        <p className="text-[16px] max-w-[640px] opacity-90 mb-4">
-          {course.summary}
-        </p>
-        <div className="mt-4 max-w-[420px]">
-          <div className="flex items-baseline justify-between mb-1.5">
-            <span className="text-[12px] uppercase tracking-[0.18em] opacity-85">
-              Course progress
-            </span>
-            <span className="text-[13px] font-semibold">
-              {course.progress_percent}% · {completedLessons}/{totalLessons} lessons
-            </span>
-          </div>
-          <div
-            role="progressbar"
-            aria-valuenow={course.progress_percent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            className="h-2 rounded-full overflow-hidden bg-[rgba(255,255,255,0.18)]"
-          >
-            <div
-              className="h-full bg-gold transition-all"
-              style={{ width: `${course.progress_percent}%` }}
-            />
-          </div>
+        {course.summary && (
+          <p className="mt-2 max-w-[60ch] text-body text-muted">{course.summary}</p>
+        )}
+        <ProgressBar
+          className="mt-5 max-w-[420px]"
+          value={course.progress_percent}
+          label={`${done} of ${lessons.length} lessons done`}
+        />
+        <div className="mt-6">
+          {next ? (
+            <ButtonLink href={lessonHref(next.id)} size="lg" icon="play">
+              Continue
+            </ButtonLink>
+          ) : lessons.length > 0 ? (
+            <p className="inline-flex items-center gap-2 rounded-full bg-gold-soft px-4 py-2 text-body font-extrabold text-gold-text">
+              <Icon name="star" size={20} />
+              Course complete. Well done!
+            </p>
+          ) : null}
         </div>
       </header>
 
-      {/* Body: two columns on lg, single column on small screens */}
-      <div className="grid lg:grid-cols-[1.2fr_.8fr] gap-8">
-        {/* Modules + lessons */}
-        <div className="space-y-5">
-          {course.modules.map((module) => (
-            <article
-              key={module.id}
-              className="bg-card border border-line rounded-lg p-5"
-            >
-              <div className="flex items-baseline gap-3 mb-3">
-                <span className="text-[12px] font-bold uppercase tracking-[0.18em] text-gold">
-                  Module {module.sort_order}
-                </span>
-                <h2 className="font-display text-paper text-[18px]">
+      {lessons.length === 0 ? (
+        <EmptyState icon="book" title="Lessons are on the way">
+          Your teacher is still adding lessons. Check back soon.
+        </EmptyState>
+      ) : (
+        <div className="space-y-8">
+          {[...course.modules]
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map((module) => (
+              <section key={module.id} aria-labelledby={`m-${module.id}`}>
+                <h2
+                  id={`m-${module.id}`}
+                  className="mb-3 font-display text-title font-bold text-ink"
+                >
                   {module.title}
                 </h2>
-              </div>
-              <ul className="divide-y divide-line/40">
-                {module.lessons.map((lesson) => (
-                  <li key={lesson.id}>
-                    <Link
-                      href={`/portal/courses/${course.id}/lessons/${lesson.id}`}
-                      className="flex items-center gap-3 py-3 -mx-2 px-2 rounded hover:bg-page transition group"
-                    >
-                      <span
-                        aria-hidden
-                        className={
-                          "w-7 h-7 rounded-full border flex items-center justify-center text-[12px] font-semibold " +
-                          (lesson.completed
-                            ? "border-success bg-[rgba(25,168,107,0.16)] text-success"
-                            : "border-line text-muted group-hover:border-blue-bright group-hover:text-blue-soft")
-                        }
-                      >
-                        {lesson.completed ? "✓" : lesson.sort_order}
-                      </span>
-                      <span className="flex-1 text-paper text-[14.5px] group-hover:text-blue-soft transition">
-                        {lesson.title}
-                      </span>
-                      <span className="text-muted text-[12px]">
-                        {lesson.duration_min} min
-                      </span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
+                <ul className="overflow-hidden rounded-card border border-line bg-card shadow-s">
+                  {[...module.lessons]
+                    .sort((a, b) => a.sort_order - b.sort_order)
+                    .map((lesson) => {
+                      const isNext = next?.id === lesson.id;
+                      return (
+                        <li key={lesson.id} className="border-b border-line last:border-b-0">
+                          <Link
+                            href={lessonHref(lesson.id)}
+                            className={[
+                              "flex min-h-14 items-center gap-3 px-4 py-2 transition-colors duration-200 hover:bg-blue-soft",
+                              isNext ? "bg-blue-soft" : "",
+                            ].join(" ")}
+                          >
+                            <span
+                              className={[
+                                "grid h-8 w-8 shrink-0 place-items-center rounded-full text-caption font-extrabold",
+                                lesson.completed
+                                  ? "bg-success text-white"
+                                  : isNext
+                                    ? "bg-blue text-white"
+                                    : "border-2 border-line text-muted",
+                              ].join(" ")}
+                            >
+                              {lesson.completed ? (
+                                <Icon name="check" size={18} strokeWidth={3} title="Done" />
+                              ) : isNext ? (
+                                <Icon name="play" size={16} title="Up next" />
+                              ) : (
+                                lesson.sort_order
+                              )}
+                            </span>
+                            <span className="flex-1 text-body font-semibold text-ink">
+                              {lesson.title}
+                            </span>
+                            <span className="text-caption text-muted">
+                              {lesson.duration_min} min
+                            </span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                </ul>
+              </section>
+            ))}
         </div>
-
-        {/* Right column: quick start */}
-        <aside className="bg-card border border-line rounded-lg p-6">
-          <div className="text-[12px] font-bold uppercase tracking-[0.22em] text-gold mb-3">
-            Get started
-          </div>
-          <p className="text-muted text-[14.5px] mb-4">
-            Click any lesson on the left to open it. Lessons render with
-            the in-page viewer and you can navigate between them with the
-            prev / next buttons.
-          </p>
-          <p className="text-muted text-[12.5px]">
-            Mark-complete + XP wire up in slice S17. The VOREM AI tutor
-            inside each lesson arrives in S23.
-          </p>
-        </aside>
-      </div>
+      )}
     </>
   );
 }

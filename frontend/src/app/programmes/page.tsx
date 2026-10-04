@@ -1,99 +1,52 @@
-import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { SectionHead } from "@/components/SectionHead";
+import { Nav } from "@/components/Nav";
+import { PageHeader } from "@/components/PageHeader";
 import { ProgrammeCard } from "@/components/ProgrammeCard";
-import {
-  getSchoolProgrammes,
-  getOnlineProgrammes,
-} from "@/lib/programmes";
+import { getOnlineProgrammes, getSchoolProgrammes } from "@/lib/programmes";
 
 export const metadata = {
-  title: "Programmes — Treasured Child School",
+  title: "Programmes | Treasured Child School",
   description:
-    "Our nursery, primary, junior and senior secondary programmes, plus online courses for learners anywhere in Nigeria.",
+    "Nursery, primary, junior and senior secondary on campus, plus online courses for learners anywhere in Nigeria.",
 };
 
 export default function Programmes() {
-  const school = getSchoolProgrammes();
-  const online = getOnlineProgrammes();
-
   return (
     <>
       <Nav />
+      <PageHeader
+        title="Programmes and fees"
+        lead="Classes on our Orerokpe campus, and online courses your child can take from anywhere."
+      />
 
-      {/* ===== Page header ===== */}
-      <header
-        className="px-[6vw] pt-[70px] pb-12"
-        style={{
-          background:
-            "radial-gradient(900px 520px at 82% -10%, rgba(47,127,212,0.18) 0, transparent 60%), var(--bg)",
-        }}
-      >
-        <div className="max-w-[1180px] mx-auto">
-          <span className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.20em] text-gold mb-4">
-            <span className="w-[7px] h-[7px] bg-gold rotate-45 inline-block" />
-            Programmes
-          </span>
-          <h1 className="font-display font-bold text-paper text-[clamp(34px,5vw,56px)] leading-[1.08] tracking-tight mb-2.5">
-            School and online — one platform, two engines.
-          </h1>
-          <p className="text-[17px] text-muted max-w-[640px]">
-            On-campus K–12 in Orerokpe, plus paid online programmes for
-            learners anywhere in Nigeria. Click any programme to see the
-            details.
+      <main>
+        <section className="wrap py-8" aria-labelledby="campus">
+          <h2 id="campus" className="mb-1 font-display text-[28px] font-bold text-ink sm:text-h3">
+            At our school
+          </h2>
+          <p className="mb-6 text-body text-muted">Nursery all the way to SS 3.</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {getSchoolProgrammes().map((p) => (
+              <ProgrammeCard key={p.slug} programme={p} />
+            ))}
+          </div>
+        </section>
+
+        <section className="wrap py-8" aria-labelledby="online">
+          <h2 id="online" className="mb-1 font-display text-[28px] font-bold text-ink sm:text-h3">
+            Online courses
+          </h2>
+          <p className="mb-6 text-body text-muted">
+            Learn on a phone from anywhere in Nigeria, with a safe helper in
+            every lesson.
           </p>
-        </div>
-      </header>
-
-      {/* ===== On campus ===== */}
-      <section className="px-[6vw] py-14 max-w-[1180px] mx-auto">
-        <SectionHead
-          kicker="On campus"
-          heading="Our school programmes."
-          sub="The full K–12 ladder, taught in person at our Orerokpe campus."
-        />
-        <div className="grid md:grid-cols-2 lg:grid-cols-2 gap-6">
-          {school.map((p) => (
-            <ProgrammeCard
-              key={p.slug}
-              href={`/programmes/${p.slug}`}
-              bandGradient={p.bandGradient}
-              bandLabel={p.bandLabel}
-              bandTextColor={p.bandTextColor}
-              pill={p.pill}
-              pillVariant={p.pillVariant}
-              title={p.title}
-            >
-              {p.summary}
-            </ProgrammeCard>
-          ))}
-        </div>
-      </section>
-
-      {/* ===== Online ===== */}
-      <section className="px-[6vw] py-14 max-w-[1180px] mx-auto">
-        <SectionHead
-          kicker="Online"
-          heading="Paid online programmes."
-          sub="For learners anywhere in Nigeria. Child-safe by design — every AI reply passes through the VOREM safety guardrails."
-        />
-        <div className="grid md:grid-cols-2 gap-6">
-          {online.map((p) => (
-            <ProgrammeCard
-              key={p.slug}
-              href={`/programmes/${p.slug}`}
-              bandGradient={p.bandGradient}
-              bandLabel={p.bandLabel}
-              bandTextColor={p.bandTextColor}
-              pill={p.pill}
-              pillVariant={p.pillVariant}
-              title={p.title}
-            >
-              {p.summary}
-            </ProgrammeCard>
-          ))}
-        </div>
-      </section>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {getOnlineProgrammes().map((p) => (
+              <ProgrammeCard key={p.slug} programme={p} />
+            ))}
+          </div>
+        </section>
+      </main>
 
       <Footer />
     </>

@@ -1,126 +1,91 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { Button } from "@/components/Button";
+import { FormAlert, PasswordField, TextField } from "@/components/Field";
 import { ApiError, postLogin } from "@/lib/api";
 
-interface FormState {
-  email: string;
-  password: string;
+/** Same-site paths only; "//x" and "/\\x" would leave the site. */
+function safeNext(raw: string | null): string {
+  if (raw && /^\/(?![/\\])/.test(raw)) return raw;
+  return "/portal";
 }
-
-const INITIAL: FormState = { email: "", password: "" };
 
 export function LoginForm() {
   const router = useRouter();
-  const [form, setForm] = useState<FormState>(INITIAL);
+  const next = safeNext(useSearchParams().get("next"));
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [topError, setTopError] = useState<string | null>(null);
-
-  function update<K extends keyof FormState>(key: K, value: FormState[K]) {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    if (topError) setTopError(null);
-  }
+  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setTopError(null);
+    setError(null);
     setSubmitting(true);
     try {
-      await postLogin({
-        email: form.email.trim(),
-        password: form.password,
-      });
-      // Cookies are now set by the response Set-Cookie headers.
-      router.push("/portal");
+      await postLogin({ email: email.trim(), password });
+      router.push(next);
+      router.refresh();
     } catch (err) {
-      if (err instanceof ApiError) {
-        setTopError(err.message);
-      } else {
-        setTopError("Something unexpected happened. Please try again.");
-      }
+      setError(
+        err instanceof ApiError ? err.message : "Something went wrong. Please try again.",
+      );
       setSubmitting(false);
     }
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      noValidate
-      className="bg-card border border-line rounded-lg p-6 sm:p-8 space-y-5"
-    >
-      {topError && (
-        <div
-          role="alert"
-          className="rounded-md border border-danger/40 bg-[rgba(210,74,74,0.10)] px-4 py-3 text-[14px] text-danger"
-        >
-          {topError}
-        </div>
-      )}
+    <form onSubmit={onSubmit} noValidate className="space-y-6">
+      {error && <FormAlert>{error}</FormAlert>}
 
-      <Field id="email" label="Email">
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-          value={form.email}
-          onChange={(e) => update("email", e.target.value)}
-          className="w-full bg-page border border-line rounded-md px-3 py-2.5 text-paper text-[15px] focus:outline-none focus:border-blue-bright focus:shadow-[0_0_0_3px_rgba(47,127,212,0.25)] transition"
-        />
-      </Field>
+      <TextField
+        id="email"
+        label="Email"
+        type="email"
+        inputMode="email"
+        required
+        autoComplete="email"
+        value={email}
+        onChange={(e) => {
+          setEmail(e.target.value);
+          setError(null);
+        }}
+      />
 
-      <Field id="password" label="Password">
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          autoComplete="current-password"
-          value={form.password}
-          onChange={(e) => update("password", e.target.value)}
-          className="w-full bg-page border border-line rounded-md px-3 py-2.5 text-paper text-[15px] focus:outline-none focus:border-blue-bright focus:shadow-[0_0_0_3px_rgba(47,127,212,0.25)] transition"
-        />
-      </Field>
+      <PasswordField
+        id="password"
+        label="Password"
+        required
+        autoComplete="current-password"
+        value={password}
+        onChange={(e) => {
+          setPassword(e.target.value);
+          setError(null);
+        }}
+      />
 
-      <div className="flex items-center justify-between">
+      <Button type="submit" size="lg" full loading={submitting}>
+        Sign in
+      </Button>
+
+      <div className="flex flex-col items-center gap-1 text-body">
         <Link
           href="/forgot-password"
-          className="text-muted text-[13px] hover:text-blue-soft transition"
+          className="inline-flex min-h-12 items-center font-bold text-blue-ink"
         >
-          Forgot password?
+          Forgot your password?
         </Link>
+        <p className="text-muted">
+          New here?{" "}
+          <Link href="/register" className="inline-flex min-h-12 items-center font-bold text-blue-ink">
+            Create an account
+          </Link>
+        </p>
       </div>
-
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full inline-flex items-center justify-center px-5 py-3 rounded-pill bg-gradient-to-b from-blue to-blue-deep text-white font-semibold shadow-[0_10px_24px_-10px_rgba(31,99,201,0.55)] hover:from-blue-bright transition disabled:opacity-60 disabled:cursor-not-allowed"
-      >
-        {submitting ? "Signing in…" : "Sign in"}
-      </button>
     </form>
-  );
-}
-
-function Field({
-  id,
-  label,
-  children,
-}: {
-  id: string;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-[13px] font-semibold text-paper">
-        {label}
-      </label>
-      {children}
-    </div>
   );
 }

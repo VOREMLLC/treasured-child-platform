@@ -1,195 +1,182 @@
 /**
- * Programme catalogue — the single source of truth for the public
- * /programmes pages. Both the catalogue (`/programmes`) and the detail
- * route (`/programmes/[slug]`) read from this list.
+ * Programme catalogue: the single source of truth for the public
+ * programme pages, the home page cards and the pay page choices.
  *
- * Later (slice S14) this is replaced by a database read; the shape of
- * `Programme` below stays close to the eventual `Course` schema in
- * BUILD_SPEC §4 so the swap is mechanical.
+ * Prices here are for DISPLAY only. The amount actually charged is
+ * decided server-side (backend/app/services/fees.py); keep the two in
+ * step when the proprietor confirms the fee schedule.
  */
 
+import type { IconName } from "@/components/Icon";
+import type { PaymentPurpose } from "@/lib/api";
+
 export type ProgrammeKind = "school" | "online";
-export type PillVariant = "blue" | "gold";
+
+/** School fees per term, in naira (mirrors FEES_KOBO on the server). */
+export const SCHOOL_FEES_NAIRA = 125_000;
 
 export interface Programme {
   slug: string;
   title: string;
-
-  // Card / detail visuals
-  bandLabel: string;
-  bandGradient: string;
-  bandTextColor?: string;
-  pill: string;
-  pillVariant?: PillVariant;
-
-  // Classification
   kind: ProgrammeKind;
   isPaid: boolean;
+  icon: IconName;
 
-  // Copy
   summary: string;
   description: string[];
   whatsIncluded: string[];
 
-  // Meta
   ageRange: string;
   level: string;
 
-  // Paid programmes carry a price note until BUILD_SPEC §14 item 1
-  // (the fee table) is supplied by the proprietor.
-  priceNote?: string;
+  /** Display price in naira and what it covers. */
+  priceNaira: number;
+  pricePer: string;
 }
 
 export const PROGRAMMES: Programme[] = [
   {
     slug: "nursery",
     title: "Nursery",
-    bandLabel: "Nursery",
-    bandGradient: "linear-gradient(135deg, var(--blue-deep), var(--navy))",
-    pill: "School · on campus",
     kind: "school",
     isPaid: false,
+    icon: "heart",
     summary:
-      "Early learning that builds curiosity, language and confidence — in a warm, structured environment.",
+      "Early learning that builds curiosity, language and confidence in a warm, caring class.",
     description: [
-      "Our Nursery programme welcomes our youngest learners with structured play, early literacy, early numeracy, and the social habits that make later school life easier.",
-      "Class sizes stay small so every child is known by name. Daily routines, songs and stories anchor the week.",
+      "Our youngest learners learn through structured play, early reading, early numbers and the friendly habits that make later school life easier.",
+      "Classes stay small so every child is known by name. Songs, stories and daily routines shape the week.",
     ],
     whatsIncluded: [
       "Phonics-led early reading and writing",
-      "Foundational numeracy through play",
+      "Counting and numbers through play",
       "Music, movement and creative arts",
       "Daily story time and outdoor play",
-      "Termly parent-teacher updates",
+      "Updates for parents every term",
     ],
-    ageRange: "3–5 years",
+    ageRange: "3 to 5 years",
     level: "Nursery",
+    priceNaira: SCHOOL_FEES_NAIRA,
+    pricePer: "per term",
   },
   {
     slug: "primary",
     title: "Primary",
-    bandLabel: "Primary",
-    bandGradient: "linear-gradient(135deg, var(--blue-deep), var(--navy))",
-    pill: "School · on campus",
     kind: "school",
     isPaid: false,
+    icon: "book",
     summary:
-      "Strong reading, writing and arithmetic foundations, with first steps into science and digital literacy.",
+      "Strong reading, writing and maths, with first steps into science and computers.",
     description: [
-      "Primary years (1 through 6) build a strong academic foundation — fluent reading, secure mathematics, clear written work, and a growing sense of curiosity about the world.",
-      "Pupils sit Common Entrance preparation in their final year. We pair classroom discipline with project work, music, and physical education.",
+      "Primary 1 to 6 builds a strong foundation: confident reading, secure maths, clear writing and a growing curiosity about the world.",
+      "Pupils prepare for Common Entrance in their final year. We pair classroom discipline with project work, music and sport.",
     ],
     whatsIncluded: [
-      "English, mathematics, basic science",
-      "Social studies, agricultural science, creative arts",
-      "Introduction to digital literacy",
-      "Common Entrance preparation in P6",
-      "Termly parent reports",
+      "English, maths and basic science",
+      "Social studies, agriculture and creative arts",
+      "Introduction to computers",
+      "Common Entrance preparation in Primary 6",
+      "Report card every term",
     ],
-    ageRange: "6–11 years",
+    ageRange: "6 to 11 years",
     level: "Primary",
+    priceNaira: SCHOOL_FEES_NAIRA,
+    pricePer: "per term",
   },
   {
     slug: "junior-secondary",
-    title: "Junior secondary (JSS 1–3)",
-    bandLabel: "Junior secondary",
-    bandGradient: "linear-gradient(135deg, var(--blue-deep), var(--navy))",
-    pill: "School · on campus",
+    title: "Junior secondary (JSS 1 to 3)",
     kind: "school",
     isPaid: false,
+    icon: "school",
     summary:
-      "The core academic years that prepare learners for BECE and senior secondary.",
+      "The core years that prepare learners for BECE and senior secondary.",
     description: [
-      "Junior Secondary (JSS 1 to JSS 3) covers the core Nigerian national curriculum. Learners take English, mathematics, basic science and technology, social studies, agricultural science, creative arts and digital literacy.",
-      "Class sizes stay small. Termly reports go to parents. BECE preparation is built into JSS 3, with mock examinations and individual feedback.",
+      "JSS 1 to JSS 3 covers the full Nigerian national curriculum: English, maths, basic science and technology, social studies, agriculture, creative arts and computer studies.",
+      "Classes stay small and parents get a report every term. BECE practice is built into JSS 3, with mock exams and personal feedback.",
     ],
     whatsIncluded: [
       "Full national JSS curriculum",
-      "Mathematics, English, basic science, social studies",
-      "Digital literacy with safety guardrails",
-      "BECE mock examinations in JSS 3",
-      "Small class sizes and termly reports",
+      "Maths, English, basic science, social studies",
+      "Safe, supervised computer studies",
+      "BECE mock exams in JSS 3",
+      "Small classes and termly reports",
     ],
-    ageRange: "10–13 years",
+    ageRange: "10 to 13 years",
     level: "Junior secondary",
+    priceNaira: SCHOOL_FEES_NAIRA,
+    pricePer: "per term",
   },
   {
     slug: "senior-secondary",
-    title: "Senior secondary (SS 1–3)",
-    bandLabel: "Senior secondary",
-    bandGradient: "linear-gradient(135deg, var(--blue-deep), var(--navy))",
-    pill: "School · on campus",
+    title: "Senior secondary (SS 1 to 3)",
     kind: "school",
     isPaid: false,
-    summary:
-      "Sciences, commercial and arts streams leading to WAEC and JAMB.",
+    icon: "star",
+    summary: "Science, commercial and arts classes leading to WAEC and JAMB.",
     description: [
-      "Senior Secondary covers SS 1 through SS 3. Learners specialise across science, commercial and arts streams and sit WAEC at the end of SS 3.",
-      "Strong preparation, regular mock examinations and personal study planning carry learners through to university or further training.",
+      "SS 1 to SS 3 learners choose science, commercial or arts subjects and sit WAEC at the end of SS 3.",
+      "Regular mock exams and personal study plans carry learners through to university or further training.",
     ],
     whatsIncluded: [
-      "Science, commercial and arts streams",
+      "Science, commercial and arts classes",
       "WAEC and JAMB preparation",
-      "Regular mock examinations",
+      "Regular mock exams",
       "University and career guidance",
-      "Small class sizes and termly reports",
+      "Small classes and termly reports",
     ],
-    ageRange: "13–17 years",
+    ageRange: "13 to 17 years",
     level: "Senior secondary",
+    priceNaira: SCHOOL_FEES_NAIRA,
+    pricePer: "per term",
   },
   {
     slug: "bece-prep",
-    title: "Common entrance & BECE prep",
-    bandLabel: "BECE prep",
-    bandGradient: "linear-gradient(135deg, var(--blue), var(--blue-bright))",
-    pill: "Online · paid",
+    title: "Common Entrance and BECE prep",
     kind: "online",
     isPaid: true,
-    priceNote:
-      "Term-by-term pricing. Final fee to be confirmed by the proprietor.",
+    icon: "book",
     summary:
-      "Targeted online practice in maths, English and verbal reasoning with the AI tutor on hand.",
+      "Short online lessons in maths, English and reasoning, with a friendly helper for stuck moments.",
     description: [
-      "Online exam-preparation programme for Common Entrance and BECE. Weekly mock tests, AI tutor on hand for stuck moments, parent-visible progress reports.",
-      "Suitable for learners anywhere in Nigeria. Lessons are short, focused and child-safe by design — the AI tutor follows the VOREM pedagogy and never strays from the lesson it is bound to.",
+      "Online exam practice for Common Entrance and BECE. Weekly mock tests, a safe AI helper inside every lesson, and progress you can see as a parent.",
+      "Works anywhere in Nigeria on a phone. Lessons are short and focused, and the helper only talks about the lesson your child is on.",
     ],
     whatsIncluded: [
-      "Maths, English, verbal reasoning, quantitative reasoning",
-      "Weekly mock tests with detailed feedback",
-      "AI tutor inside every lesson (child-safety guardrails)",
-      "Parent-visible progress reports",
-      "Term-by-term enrolment",
+      "Maths, English, verbal and number reasoning",
+      "Weekly mock tests with clear feedback",
+      "A safe AI helper inside every lesson",
+      "Progress reports parents can see",
+      "Join term by term",
     ],
-    ageRange: "9–13 years",
+    ageRange: "9 to 13 years",
     level: "Online",
+    priceNaira: 20_000,
+    pricePer: "per term",
   },
   {
     slug: "ai-data",
-    title: "AI & data analytics",
-    bandLabel: "AI & data",
-    bandGradient: "linear-gradient(135deg, var(--gold-deep), var(--gold))",
-    bandTextColor: "#2a1f00",
-    pill: "Online · flagship",
-    pillVariant: "gold",
+    title: "AI and data for young people",
     kind: "online",
     isPaid: true,
-    priceNote:
-      "Cohort-based pricing. Final fee to be confirmed by the proprietor.",
+    icon: "sparkle",
     summary:
-      "An accessible introduction to AI and data — designed for ages 12+. Project-based, with safety guardrails throughout.",
+      "A friendly first course in AI and data for ages 12 and up. Learn by building small projects.",
     description: [
-      "An accessible introduction to AI and data analytics — designed for ages 12 and above. Project-based, with safety guardrails throughout. Learners build small portfolio projects (spreadsheets → charts → simple ML notebooks).",
-      "Limited cohort sizes. Parental consent is required before a learner account is activated.",
+      "A friendly introduction to AI and data for ages 12 and above. Learners build small projects step by step: spreadsheets, then charts, then simple AI notebooks.",
+      "Small groups. A parent or guardian agrees before a learner account is switched on.",
     ],
     whatsIncluded: [
-      "Foundations of data: spreadsheets, charts, summary statistics",
-      "Introduction to Python notebooks",
-      "Three hands-on projects (portfolio-ready)",
-      "AI tutor inside every lesson, with safety guardrails",
-      "Parental consent gate before account activation",
+      "Data basics: spreadsheets, charts and simple statistics",
+      "First steps with Python notebooks",
+      "Three hands-on projects to keep",
+      "A safe AI helper inside every lesson",
+      "Parent consent before the account starts",
     ],
-    ageRange: "12+ years",
+    ageRange: "12 years and up",
     level: "Online",
+    priceNaira: 35_000,
+    pricePer: "per course",
   },
 ];
 
@@ -204,3 +191,40 @@ export function getSchoolProgrammes(): Programme[] {
 export function getOnlineProgrammes(): Programme[] {
   return PROGRAMMES.filter((p) => p.kind === "online");
 }
+
+export function formatNaira(naira: number): string {
+  return `₦${naira.toLocaleString("en-NG")}`;
+}
+
+// ── Pay page choices ────────────────────────────────────────
+
+export interface PayChoice {
+  /** Stable key used in the URL (?for=...) and as the radio value. */
+  key: string;
+  title: string;
+  description: string;
+  priceNaira: number;
+  icon: IconName;
+  purpose: PaymentPurpose;
+  target?: string;
+}
+
+export const PAY_CHOICES: PayChoice[] = [
+  {
+    key: "fees",
+    title: "School fees",
+    description: "One term, any class",
+    priceNaira: SCHOOL_FEES_NAIRA,
+    icon: "school",
+    purpose: "fees",
+  },
+  ...getOnlineProgrammes().map<PayChoice>((p) => ({
+    key: p.slug,
+    title: p.title,
+    description: `Online, ${p.pricePer}`,
+    priceNaira: p.priceNaira,
+    icon: p.icon,
+    purpose: "programme",
+    target: p.slug,
+  })),
+];

@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { Nav } from "@/components/Nav";
+
 import { Footer } from "@/components/Footer";
+import { Icon } from "@/components/Icon";
+import { Nav } from "@/components/Nav";
 import { LessonView } from "./LessonView";
 
 export const metadata = {
-  title: "Lesson — Treasured Child School",
+  title: "Lesson | Treasured Child School",
 };
 
 interface PageProps {
@@ -15,15 +17,16 @@ export default function LessonPage({ params }: PageProps) {
   return (
     <>
       <Nav />
-      <section className="px-[6vw] py-10 max-w-[1180px] mx-auto">
+      <main className="wrap py-6 sm:py-10">
         <Link
           href={`/portal/courses/${params.id}`}
-          className="inline-flex items-center gap-1.5 text-muted text-[13px] hover:text-blue-soft transition mb-5"
+          className="mb-4 inline-flex min-h-12 items-center gap-2 text-body font-bold text-muted hover:text-blue-ink"
         >
-          ← Back to course
+          <Icon name="arrow-left" size={20} />
+          Back to course
         </Link>
-        <LessonView courseId={params.id} lessonId={params.lessonId} />
-      </section>
+        <LessonView key={params.lessonId} courseId={params.id} lessonId={params.lessonId} />
+      </main>
       <Footer />
     </>
   );

@@ -1,55 +1,107 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap");
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Design tokens.
-   Mirrored in assets/css/design-system.css for the static preview.
-   When you change a value here, change it there too — or retire the
-   static preview when this file becomes the only home page surface. */
+/* Design tokens. The single source of truth for colour; tailwind.config.ts
+   only gives these variables short class names. Light is the default
+   because most parents use the site outdoors on phones in daylight. */
 :root {
-  /* Brand blues */
-  --blue:         #1f63c9;
-  --blue-deep:    #164a96;
-  --navy:         #10395f;
-  --blue-bright:  #2f7fd4;
-  --blue-soft:    #6aa6e6;
+  color-scheme: light;
 
-  /* Accent gold */
-  --gold:         #efb700;
-  --gold-deep:    #b88a00;
+  --bg:          #f6f8fc;
+  --surface:     #fffffe;
+  --card:        #fffffe;
+  --line:        #dce3ee;
 
-  /* Dark surfaces */
-  --bg:           #0a1626;
-  --surface:      #0f2236;
-  --card:         #142a44;
-  --line:         #274468;
+  --ink:         #13212f;
+  --muted:       #4a5a6e;
 
-  /* Foregrounds */
-  --text:         #e8eef7;
-  --muted:        #9fb3cd;
-  --ink:          #20262a;
+  /* Blue is the one action colour. --blue is for fills (with white text);
+     --blue-ink is for blue text and links on the page background. */
+  --blue:        #1f63c9;
+  --blue-deep:   #164a96;
+  --blue-ink:    #1f63c9;
+  --navy:        #10395f;
+  --blue-soft:   #e6effb;
 
-  /* Semantic */
-  --success:      #19a86b;
-  --danger:       #d24a4a;
-  --warning:      #d99a1c;
-  --info:         #3b8ad9;
+  /* Gold is reserved for rewards, progress and celebration. Never text. */
+  --gold:        #efb700;
+  --gold-soft:   #fff4cc;
+  --gold-text:   #7a5b00;
 
-  /* Typography */
-  --font-display: "Fraunces", Georgia, serif;
-  --font-body:    "Hanken Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --success:      #137a4f;
+  --success-soft: #e3f5ec;
+  --danger:       #b42d2d;
+  --danger-soft:  #fbe9e9;
+  --warning:      #8a5a00;
+  --warning-soft: #fff1d6;
+
+  --ring:        rgba(31, 99, 201, 0.45);
 }
 
-body {
-  line-height: 1.65;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --bg:          #0e1824;
+    --surface:     #152232;
+    --card:        #172638;
+    --line:        #2a3b52;
+
+    --ink:         #eaf0f7;
+    --muted:       #a9b8ca;
+
+    --blue:        #1f63c9;
+    --blue-deep:   #164a96;
+    --blue-ink:    #8bbcf5;
+    --navy:        #0b2742;
+    --blue-soft:   #1a2e4a;
+
+    --gold:        #efb700;
+    --gold-soft:   #3a2f0a;
+    --gold-text:   #f5cf52;
+
+    --success:      #5fd09a;
+    --success-soft: #12301f;
+    --danger:       #f19494;
+    --danger-soft:  #3a1717;
+    --warning:      #f0b54a;
+    --warning-soft: #36280b;
+
+    --ring:        rgba(139, 188, 245, 0.55);
+  }
 }
 
-h1, h2, h3 {
-  font-family: var(--font-display);
-  line-height: 1.12;
-  letter-spacing: -0.01em;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display), system-ui, sans-serif;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Page container: 16px gutter on phones, 24px from sm up, 1120px max. */
+  .wrap {
+    @apply mx-auto w-full max-w-[1120px] px-4 sm:px-6;
+  }
 }

@@ -117,7 +117,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
     topMessage = "Please fix the highlighted fields and resubmit.";
   } else if (res.status === 429) {
     topMessage =
-      "Too many submissions — please wait a minute and try again.";
+      "Too many tries. Please wait a minute and try again.";
   } else if (res.status === 409 && typeof errBody.detail === "string") {
     topMessage = errBody.detail;
   } else if (typeof errBody.detail === "string") {
@@ -128,7 +128,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Applications (POST /applications) — S6
+// Applications (POST /applications)
 // ─────────────────────────────────────────────────────────────
 
 export type ClassLevel =
@@ -165,7 +165,7 @@ export function postApplication(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Auth — register (POST /auth/register) — S7
+// Auth: register (POST /auth/register)
 // ─────────────────────────────────────────────────────────────
 
 export type UserRole = "admin" | "instructor" | "student";
@@ -195,7 +195,7 @@ export function postRegister(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Auth — login / refresh / logout (POST /auth/*) — S8
+// Auth: login / refresh / logout (POST /auth/*)
 // ─────────────────────────────────────────────────────────────
 
 export interface LoginRequest {
@@ -216,7 +216,7 @@ export function postLogout(): Promise<{ ok: boolean }> {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Auth — password reset (POST /auth/forgot|reset-password) — S9
+// Auth: password reset (POST /auth/forgot|reset-password)
 // ─────────────────────────────────────────────────────────────
 
 export interface ForgotPasswordRequest {
@@ -246,7 +246,7 @@ export function postResetPassword(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Payments (POST /payments/*) — S11
+// Payments (POST /payments/*)
 // ─────────────────────────────────────────────────────────────
 
 export type PaymentPurpose = "fees" | "programme";
@@ -297,7 +297,7 @@ export function postPaymentsVerify(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Courses (GET /me/courses, /courses/{id}) — S15
+// Courses (GET /me/courses, /courses/{id})
 // ─────────────────────────────────────────────────────────────
 
 export type CourseType = "school" | "online";
@@ -349,7 +349,7 @@ export function getCourse(courseId: string): Promise<CourseDetail> {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Lesson view (GET /courses/{course_id}/lessons/{lesson_id}) — S16
+// Lesson view (GET /courses/{course_id}/lessons/{lesson_id})
 // ─────────────────────────────────────────────────────────────
 
 export interface LessonNeighbor {
@@ -385,7 +385,7 @@ export function getLesson(
 }
 
 // ─────────────────────────────────────────────────────────────
-// Mark lesson complete (POST /lessons/{id}/complete) — S17
+// Mark lesson complete (POST /lessons/{id}/complete)
 // ─────────────────────────────────────────────────────────────
 
 export interface LessonCompleteResponse {
@@ -403,4 +403,70 @@ export function postLessonComplete(
     `/lessons/${lessonId}/complete`,
     {},
   );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Current user + dashboard (GET /me, GET /me/dashboard)
+// ─────────────────────────────────────────────────────────────
+
+export function getMe(): Promise<UserResponse> {
+  return getJson<UserResponse>("/me");
+}
+
+export interface DashboardCourse {
+  id: string;
+  slug: string;
+  title: string;
+  level: string;
+  type: CourseType;
+  progress_percent: number;
+  /** First unfinished lesson; null when the course is complete. */
+  next_lesson_id: string | null;
+}
+
+export interface ContinueLearning {
+  course_id: string;
+  course_title: string;
+  lesson_id: string;
+  lesson_title: string;
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  learner_name: string;
+  xp: number;
+  is_me: boolean;
+}
+
+export interface DashboardResponse {
+  xp: number;
+  level: number;
+  streak_days: number;
+  badges: string[];
+  active_courses_count: number;
+  courses: DashboardCourse[];
+  continue_learning: ContinueLearning | null;
+  leaderboard: LeaderboardEntry[];
+}
+
+export function getMeDashboard(): Promise<DashboardResponse> {
+  return getJson<DashboardResponse>("/me/dashboard");
+}
+
+// ─────────────────────────────────────────────────────────────
+// AI tutor (POST /agents/tutor)
+// ─────────────────────────────────────────────────────────────
+
+export interface TutorRequest {
+  lesson_id: string;
+  question: string;
+}
+
+export interface TutorResponse {
+  reply: string;
+  run_id: string;
+}
+
+export function postTutorAsk(payload: TutorRequest): Promise<TutorResponse> {
+  return postJson<TutorResponse>("/agents/tutor", payload);
 }

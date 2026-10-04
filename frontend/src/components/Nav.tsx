@@ -1,43 +1,77 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+
 import { Brand } from "./Brand";
+import { buttonClasses } from "./Button";
+import { MobileBottomBar, isPortalPath } from "./MobileBottomBar";
 
+interface NavLink {
+  href: string;
+  label: string;
+}
+
+const PUBLIC_LINKS: NavLink[] = [
+  { href: "/about", label: "About" },
+  { href: "/programmes", label: "Programmes" },
+  { href: "/pay", label: "Pay fees" },
+  { href: "/login", label: "Sign in" },
+];
+
+const PORTAL_LINKS: NavLink[] = [
+  { href: "/portal", label: "Home" },
+  { href: "/portal/courses", label: "My courses" },
+  { href: "/pay", label: "Pay fees" },
+  { href: "/portal/me", label: "Me" },
+];
+
+/**
+ * Top bar (64px). On phones it shows only the logo; navigation moves to
+ * the bottom bar where thumbs can reach it.
+ */
 export function Nav() {
+  const pathname = usePathname() ?? "/";
+  const portal = isPortalPath(pathname);
+  const links = portal ? PORTAL_LINKS : PUBLIC_LINKS;
+
   return (
-    <nav
-      aria-label="Primary"
-      className="sticky top-0 z-40 flex items-center justify-between px-[6vw] py-3.5 backdrop-blur-md border-b border-line bg-[rgba(10,22,38,0.85)]"
-    >
-      <Brand priority />
+    <>
+      <header className="sticky top-0 z-40 border-b border-line bg-surface">
+        <div className="wrap flex h-16 items-center justify-between gap-4">
+          <Brand priority href={portal ? "/portal" : "/"} />
 
-      <div className="hidden md:flex gap-7 text-[15px] font-medium text-muted">
-        <Link href="/about" className="hover:text-blue-soft transition">
-          About
-        </Link>
-        <Link href="/#programmes" className="hover:text-blue-soft transition">
-          Programmes
-        </Link>
-        <Link href="/#why" className="hover:text-blue-soft transition">
-          Why us
-        </Link>
-        <Link href="/#contact" className="hover:text-blue-soft transition">
-          Contact
-        </Link>
-      </div>
-
-      <div className="flex gap-2.5">
-        <Link
-          href="/login"
-          className="hidden md:inline-flex items-center px-4 py-2 rounded-pill border border-line text-paper text-[13.5px] font-semibold hover:border-blue-bright transition"
-        >
-          Sign in
-        </Link>
-        <Link
-          href="/apply"
-          className="inline-flex items-center px-4 py-2 rounded-pill bg-gradient-to-b from-blue to-blue-deep text-white text-[13.5px] font-semibold shadow-[0_10px_24px_-10px_rgba(31,99,201,0.55)] hover:from-blue-bright hover:to-blue transition"
-        >
-          Apply now
-        </Link>
-      </div>
-    </nav>
+          <nav aria-label="Primary" className="hidden items-center gap-2 md:flex">
+            {links.map((l) => {
+              const active =
+                l.href === pathname ||
+                (l.href !== "/portal" && pathname.startsWith(l.href));
+              return (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  aria-current={active ? "page" : undefined}
+                  className={[
+                    "inline-flex min-h-12 items-center rounded-control px-3 text-body font-bold transition-colors duration-200",
+                    active ? "text-blue-ink" : "text-muted hover:text-ink",
+                  ].join(" ")}
+                >
+                  {l.label}
+                </Link>
+              );
+            })}
+            {!portal && (
+              <Link
+                href="/apply"
+                className={buttonClasses({ className: "ml-2 !text-body" })}
+              >
+                Apply now
+              </Link>
+            )}
+          </nav>
+        </div>
+      </header>
+      <MobileBottomBar />
+    </>
   );
 }

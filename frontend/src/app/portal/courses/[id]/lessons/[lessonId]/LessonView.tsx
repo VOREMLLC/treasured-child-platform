@@ -1,22 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 
+import { Button, ButtonLink, buttonClasses } from "@/components/Button";
+import { EmptyState } from "@/components/EmptyState";
+import { FormAlert } from "@/components/Field";
+import { Icon } from "@/components/Icon";
+import { Skeleton, SkeletonGroup } from "@/components/Skeleton";
+import { ErrorCard, SignInPrompt } from "@/components/StatusViews";
 import {
   ApiError,
   getLesson,
   postLessonComplete,
-  type LessonDetail,
 } from "@/lib/api";
-
-type State =
-  | { kind: "loading" }
-  | { kind: "needs-signin" }
-  | { kind: "forbidden" }
-  | { kind: "error"; message: string }
-  | { kind: "ready"; lesson: LessonDetail };
+import { useApi } from "@/lib/useApi";
+import { TutorCard } from "./TutorCard";
 
 interface Props {
   courseId: string;
@@ -24,297 +24,256 @@ interface Props {
 }
 
 export function LessonView({ courseId, lessonId }: Props) {
-  const [state, setState] = useState<State>({ kind: "loading" });
+  const { state, setData, reload } = useApi(
+    () => getLesson(courseId, lessonId),
+    [courseId, lessonId],
+  );
   const [marking, setMarking] = useState(false);
   const [markError, setMarkError] = useState<string | null>(null);
+  const [celebrate, setCelebrate] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    setState({ kind: "loading" });
-    setMarkError(null);
-    getLesson(courseId, lessonId)
-      .then((lesson) => {
-        if (!cancelled) setState({ kind: "ready", lesson });
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        if (err instanceof ApiError && err.status === 401) {
-          setState({ kind: "needs-signin" });
-        } else if (err instanceof ApiError && err.status === 403) {
-          setState({ kind: "forbidden" });
-        } else if (err instanceof ApiError) {
-          setState({ kind: "error", message: err.message });
-        } else {
-          setState({
-            kind: "error",
-            message: "Something unexpected happened. Please try again.",
-          });
+  const coursePath = `/portal/courses/${courseId}`;
+
+  if (state.kind === "loading") {
+    return (
+      <SkeletonGroup label="Opening your lesson">
+        <Skeleton className="mb-3 h-5 w-48" />
+        <Skeleton className="mb-8 h-10 w-3/4" />
+        <div className="max-w-[65ch] space-y-3">
+          <Skeleton className="h-5 w-full" />
+          <Skeleton className="h-5 w-full" />
+          <Skeleton className="h-5 w-11/12" />
+          <Skeleton className="h-5 w-4/5" />
+        </div>
+      </SkeletonGroup>
+    );
+  }
+  if (state.kind === "signed-out") {
+    return <SignInPrompt next={`${coursePath}/lessons/${lessonId}`} />;
+  }
+  if (state.kind === "forbidden") {
+    return (
+      <EmptyState
+        icon="lock"
+        title="This lesson is not open for you yet"
+        actions={
+          <ButtonLink href="/portal/courses" variant="secondary">
+            My courses
+          </ButtonLink>
         }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [courseId, lessonId]);
+      >
+        You may need to join the course first.
+      </EmptyState>
+    );
+  }
+  if (state.kind === "error") {
+    return <ErrorCard message={state.message} onRetry={reload} />;
+  }
 
-  async function onMarkComplete() {
-    if (state.kind !== "ready") return;
+  const lesson = state.data;
+
+  async function onFinished() {
     setMarking(true);
     setMarkError(null);
     try {
-      const result = await postLessonComplete(state.lesson.id);
-      setState({
-        kind: "ready",
-        lesson: { ...state.lesson, completed: result.completed },
-      });
+      const result = await postLessonComplete(lesson.id);
+      setData({ ...lesson, completed: result.completed });
+      setCelebrate(true);
     } catch (err) {
-      if (err instanceof ApiError) {
-        setMarkError(err.message);
-      } else {
-        setMarkError("Could not mark complete. Please try again.");
-      }
+      setMarkError(
+        err instanceof ApiError ? err.message : "That did not save. Please try again.",
+      );
     } finally {
       setMarking(false);
     }
   }
 
-  if (state.kind === "loading") {
-    return (
-      <div
-        role="status"
-        className="bg-card border border-line rounded-lg p-6 text-muted text-center"
-      >
-        Loading lesson…
-      </div>
-    );
-  }
-
-  if (state.kind === "needs-signin") {
-    return (
-      <article className="bg-card border border-line rounded-lg p-8 text-center">
-        <p className="text-muted text-[15px] mb-4">
-          Please sign in to view this lesson.
-        </p>
-        <Link
-          href="/login"
-          className="inline-flex items-center px-5 py-3 rounded-pill bg-gradient-to-b from-blue to-blue-deep text-white font-semibold transition"
-        >
-          Sign in
-        </Link>
-      </article>
-    );
-  }
-
-  if (state.kind === "forbidden") {
-    return (
-      <article
-        role="alert"
-        className="bg-card border border-danger/40 rounded-lg p-8 text-center"
-      >
-        <div className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.22em] text-danger mb-3">
-          Not available
-        </div>
-        <p className="text-muted text-[15px] max-w-[460px] mx-auto">
-          This lesson isn&apos;t available. You might not be enrolled in
-          the course, or the lesson doesn&apos;t exist.
-        </p>
-      </article>
-    );
-  }
-
-  if (state.kind === "error") {
-    return (
-      <article
-        role="alert"
-        className="bg-card border border-danger/40 rounded-lg p-6 text-center"
-      >
-        <p className="text-danger text-[15px]">{state.message}</p>
-      </article>
-    );
-  }
-
-  const { lesson } = state;
+  const nextHref = lesson.next
+    ? `/portal/courses/${lesson.course_id}/lessons/${lesson.next.id}`
+    : null;
 
   return (
-    <>
-      {/* Breadcrumb + title */}
-      <div className="mb-6">
-        <p className="text-muted text-[13px] mb-1">
-          {lesson.course_title} · {lesson.module_title}
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <article>
+        <p className="text-caption font-semibold text-muted">
+          {lesson.course_title}, {lesson.module_title}
         </p>
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <span className="text-[12px] font-bold uppercase tracking-[0.18em] text-gold">
-            Lesson {lesson.sort_order}
-          </span>
-          <h1 className="font-display font-bold text-paper text-[clamp(28px,4vw,40px)] leading-[1.1]">
-            {lesson.title}
-          </h1>
-          <span className="text-muted text-[13px]">
-            {lesson.duration_min} min
-          </span>
-        </div>
-      </div>
+        <h1 className="mt-1 font-display text-[32px] font-bold text-ink sm:text-h2">
+          {lesson.title}
+        </h1>
+        <p className="mt-1 text-caption text-muted">
+          About {lesson.duration_min} min
+        </p>
 
-      {/* Two-column layout: content on left, tutor placeholder on right */}
-      <div className="grid lg:grid-cols-[1.4fr_.6fr] gap-8">
-        <div>
-          {/* Optional media placeholder */}
-          {lesson.media_url ? (
-            <div className="bg-card border border-line rounded-lg overflow-hidden mb-6 aspect-video grid place-items-center">
-              <p className="text-muted text-[14px]">
-                Media: <span className="font-mono text-[12px]">{lesson.media_url}</span>
+        {lesson.media_url && <LessonMedia url={lesson.media_url} title={lesson.title} />}
+
+        <div className="mt-6 max-w-[65ch] text-[18px] leading-[1.6] text-ink">
+          <ReactMarkdown components={MARKDOWN}>{lesson.content}</ReactMarkdown>
+        </div>
+
+        {/* Finish + next */}
+        <div className="mt-10 max-w-[65ch] rounded-card border border-line bg-card p-5 shadow-s">
+          {lesson.completed ? (
+            <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left">
+              <span className="relative grid h-16 w-16 shrink-0 place-items-center">
+                <span
+                  className={`grid h-16 w-16 place-items-center rounded-full bg-gold text-ink ${celebrate ? "motion-safe:animate-celebrate" : ""}`}
+                >
+                  <Icon name="check" size={34} strokeWidth={3} />
+                </span>
+                {celebrate && <Burst />}
+              </span>
+              <p className="flex-1 font-display text-title font-bold text-ink" role="status">
+                {celebrate ? "Brilliant! Lesson done." : "You finished this lesson."}
               </p>
+              {nextHref ? (
+                <ButtonLink href={nextHref} size="lg" iconRight="arrow-right">
+                  Next lesson
+                </ButtonLink>
+              ) : (
+                <ButtonLink href={coursePath} size="lg">
+                  Back to course
+                </ButtonLink>
+              )}
             </div>
           ) : (
-            <div
-              className="bg-card border border-line rounded-lg p-6 mb-6 text-center"
-              style={{
-                background:
-                  "repeating-linear-gradient(135deg, rgba(47,127,212,0.05) 0 14px, transparent 14px 28px), var(--card)",
-              }}
-            >
-              <p className="text-muted text-[13px]">
-                No media for this lesson.
-              </p>
-            </div>
+            <>
+              {markError && (
+                <div className="mb-4">
+                  <FormAlert>{markError}</FormAlert>
+                </div>
+              )}
+              <Button size="lg" full onClick={onFinished} loading={marking} icon="check">
+                I finished this!
+              </Button>
+              {nextHref && (
+                <Link
+                  href={nextHref}
+                  className={buttonClasses({ variant: "ghost", full: true, className: "mt-2" })}
+                >
+                  Skip to next lesson
+                </Link>
+              )}
+            </>
           )}
-
-          {/* Markdown content */}
-          <article className="bg-card border border-line rounded-lg p-6 sm:p-8 prose-content">
-            <ReactMarkdown
-              components={{
-                h1: ({ children }) => (
-                  <h1 className="font-display text-paper text-[26px] mt-4 mb-3 first:mt-0">
-                    {children}
-                  </h1>
-                ),
-                h2: ({ children }) => (
-                  <h2 className="font-display text-paper text-[22px] mt-5 mb-3">
-                    {children}
-                  </h2>
-                ),
-                h3: ({ children }) => (
-                  <h3 className="font-display text-paper text-[18px] mt-4 mb-2">
-                    {children}
-                  </h3>
-                ),
-                p: ({ children }) => (
-                  <p className="text-paper text-[15.5px] leading-relaxed mb-3.5">
-                    {children}
-                  </p>
-                ),
-                ul: ({ children }) => (
-                  <ul className="list-disc pl-6 mb-3.5 text-paper text-[15.5px] space-y-1.5">
-                    {children}
-                  </ul>
-                ),
-                ol: ({ children }) => (
-                  <ol className="list-decimal pl-6 mb-3.5 text-paper text-[15.5px] space-y-1.5">
-                    {children}
-                  </ol>
-                ),
-                code: ({ children }) => (
-                  <code className="bg-page border border-line rounded px-1.5 py-0.5 text-[13.5px] font-mono text-blue-soft">
-                    {children}
-                  </code>
-                ),
-                strong: ({ children }) => (
-                  <strong className="text-paper font-semibold">
-                    {children}
-                  </strong>
-                ),
-                a: ({ children, href }) => (
-                  <a
-                    href={href}
-                    className="text-blue-soft hover:underline"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {children}
-                  </a>
-                ),
-              }}
-            >
-              {lesson.content}
-            </ReactMarkdown>
-          </article>
-
-          {/* Mark complete */}
-          <div className="mt-6 flex items-center gap-4 flex-wrap">
-            {lesson.completed ? (
-              <span className="inline-flex items-center gap-2 px-5 py-3 rounded-pill border border-success bg-[rgba(25,168,107,0.10)] text-success font-semibold">
-                <span aria-hidden>✓</span> Completed
-              </span>
-            ) : (
-              <button
-                type="button"
-                onClick={onMarkComplete}
-                disabled={marking}
-                className="inline-flex items-center px-5 py-3 rounded-pill bg-gradient-to-b from-blue to-blue-deep text-white font-semibold shadow-[0_10px_24px_-10px_rgba(31,99,201,0.55)] hover:from-blue-bright transition disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                {marking ? "Marking…" : "Mark complete"}
-              </button>
-            )}
-            {markError && (
-              <p className="text-danger text-[12.5px]">{markError}</p>
-            )}
-          </div>
         </div>
 
-        {/* Tutor placeholder (S23) */}
-        <aside className="bg-card border border-line rounded-lg p-6">
-          <div className="text-[12px] font-bold uppercase tracking-[0.18em] text-gold mb-2">
-            Ada — your tutor
-          </div>
-          <h3 className="font-display text-paper text-[18px] mb-2">
-            Coming soon.
-          </h3>
-          <p className="text-muted text-[14px] mb-4">
-            The VOREM AI tutor lives here. It will explain concepts in
-            plain language, check your understanding, and adapt to your
-            pace — with strict child-safety guardrails throughout.
-          </p>
-          <p className="text-muted text-[12.5px]">
-            Arrives in slice S23 (tutor) + S24 (guardrails).
-          </p>
-        </aside>
-      </div>
-
-      {/* Prev / next navigation */}
-      <nav
-        aria-label="Lesson navigation"
-        className="grid sm:grid-cols-2 gap-3 mt-10 pt-6 border-t border-line"
-      >
-        {lesson.prev ? (
+        {lesson.prev && (
           <Link
             href={`/portal/courses/${lesson.course_id}/lessons/${lesson.prev.id}`}
-            className="flex flex-col p-4 rounded-lg border border-line hover:border-blue-deep transition"
+            className="mt-6 inline-flex min-h-12 items-center gap-2 text-body font-bold text-muted hover:text-blue-ink"
           >
-            <span className="text-[11.5px] uppercase tracking-[0.18em] text-muted mb-1">
-              ← Previous
-            </span>
-            <span className="text-paper font-semibold text-[14.5px]">
-              {lesson.prev.title}
-            </span>
+            <Icon name="arrow-left" size={20} />
+            Back to: {lesson.prev.title}
           </Link>
-        ) : (
-          <span />
         )}
-        {lesson.next ? (
-          <Link
-            href={`/portal/courses/${lesson.course_id}/lessons/${lesson.next.id}`}
-            className="flex flex-col p-4 rounded-lg border border-line hover:border-blue-deep transition sm:text-right"
-          >
-            <span className="text-[11.5px] uppercase tracking-[0.18em] text-muted mb-1">
-              Next →
-            </span>
-            <span className="text-paper font-semibold text-[14.5px]">
-              {lesson.next.title}
-            </span>
-          </Link>
-        ) : (
-          <span />
-        )}
-      </nav>
-    </>
+      </article>
+
+      <aside className="lg:sticky lg:top-24 lg:self-start">
+        <TutorCard lessonId={lesson.id} />
+      </aside>
+    </div>
   );
 }
+
+/** Eight gold dots flying out once; transform/opacity only. */
+function Burst() {
+  const dots = Array.from({ length: 8 }, (_, i) => {
+    const angle = (i / 8) * Math.PI * 2;
+    return {
+      dx: `${Math.round(Math.cos(angle) * 44)}px`,
+      dy: `${Math.round(Math.sin(angle) * 44)}px`,
+    };
+  });
+  return (
+    <span aria-hidden className="pointer-events-none absolute inset-0 motion-reduce:hidden">
+      {dots.map((d, i) => (
+        <span
+          key={i}
+          className="absolute left-1/2 top-1/2 -ml-1.5 -mt-1.5 h-3 w-3 rounded-full bg-gold motion-safe:animate-burst"
+          style={{ "--dx": d.dx, "--dy": d.dy } as React.CSSProperties}
+        />
+      ))}
+    </span>
+  );
+}
+
+/** Show the lesson's media; never print the raw URL. */
+function LessonMedia({ url, title }: { url: string; title: string }) {
+  const yt = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,})/);
+  if (yt) {
+    return (
+      <div className="mt-6 aspect-video max-w-[65ch] overflow-hidden rounded-card bg-navy">
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${yt[1]}`}
+          title={title}
+          loading="lazy"
+          allow="encrypted-media; picture-in-picture"
+          allowFullScreen
+          className="h-full w-full"
+        />
+      </div>
+    );
+  }
+  if (/\.(mp4|webm)(\?|$)/i.test(url)) {
+    return (
+      <video
+        src={url}
+        controls
+        preload="none"
+        className="mt-6 aspect-video w-full max-w-[65ch] rounded-card bg-navy"
+      />
+    );
+  }
+  if (/\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(url)) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt="" loading="lazy" className="mt-6 w-full max-w-[65ch] rounded-card" />;
+  }
+  return (
+    <div className="mt-6">
+      <ButtonLink href={url} external variant="secondary" icon="play">
+        Watch the video
+      </ButtonLink>
+    </div>
+  );
+}
+
+type MarkdownComponents = NonNullable<Parameters<typeof ReactMarkdown>[0]["components"]>;
+
+const MARKDOWN: MarkdownComponents = {
+  h1: ({ children }) => (
+    <h2 className="mb-3 mt-8 font-display text-h3 font-bold first:mt-0">{children}</h2>
+  ),
+  h2: ({ children }) => (
+    <h2 className="mb-3 mt-8 font-display text-title font-bold">{children}</h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="mb-2 mt-6 font-display text-title font-bold">{children}</h3>
+  ),
+  p: ({ children }) => <p className="mb-4">{children}</p>,
+  ul: ({ children }) => <ul className="mb-4 list-disc space-y-2 pl-6">{children}</ul>,
+  ol: ({ children }) => <ol className="mb-4 list-decimal space-y-2 pl-6">{children}</ol>,
+  code: ({ children }) => (
+    <code className="rounded bg-blue-soft px-1.5 py-0.5 font-mono text-[16px]">{children}</code>
+  ),
+  pre: ({ children }) => (
+    <pre className="mb-4 overflow-x-auto rounded-control bg-blue-soft p-4">{children}</pre>
+  ),
+  strong: ({ children }) => <strong className="font-extrabold">{children}</strong>,
+  blockquote: ({ children }) => (
+    <blockquote className="mb-4 rounded-control border-l-4 border-gold bg-gold-soft px-4 py-3">
+      {children}
+    </blockquote>
+  ),
+  a: ({ children, href }) => (
+    <a
+      href={href}
+      className="font-bold text-blue-ink underline underline-offset-2"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {children}
+    </a>
+  ),
+};
+

@@ -2,12 +2,17 @@
 
 import { useState, type FormEvent } from "react";
 
+import { Button, ButtonLink } from "@/components/Button";
+import { ChoiceTiles, type ChoiceOption } from "@/components/ChoiceTiles";
+import { FormAlert, TextAreaField, TextField } from "@/components/Field";
+import { Icon } from "@/components/Icon";
 import {
   ApiError,
   postApplication,
   type ApplicationCreate,
   type ClassLevel,
 } from "@/lib/api";
+import { firstName } from "@/lib/useApi";
 
 interface FormState {
   child_name: string;
@@ -27,11 +32,21 @@ const INITIAL: FormState = {
   message: "",
 };
 
-const CLASS_OPTIONS: { value: ClassLevel; label: string }[] = [
-  { value: "nursery", label: "Nursery" },
-  { value: "primary", label: "Primary" },
-  { value: "junior_secondary", label: "Junior secondary" },
-  { value: "senior_secondary", label: "Senior secondary" },
+const LEVELS: ChoiceOption<ClassLevel>[] = [
+  { value: "nursery", title: "Nursery", description: "Ages 3 to 5", icon: "heart" },
+  { value: "primary", title: "Primary", description: "Ages 6 to 11", icon: "book" },
+  {
+    value: "junior_secondary",
+    title: "Junior secondary",
+    description: "JSS 1 to 3",
+    icon: "school",
+  },
+  {
+    value: "senior_secondary",
+    title: "Senior secondary",
+    description: "SS 1 to 3",
+    icon: "star",
+  },
 ];
 
 export function ApplyForm() {
@@ -39,9 +54,8 @@ export function ApplyForm() {
   const [submitting, setSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [topError, setTopError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<{ guardianName: string } | null>(
-    null,
-  );
+  const [showNote, setShowNote] = useState(false);
+  const [doneFor, setDoneFor] = useState<string | null>(null);
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -60,7 +74,7 @@ export function ApplyForm() {
     setTopError(null);
 
     if (!form.class_level) {
-      setFieldErrors({ class_level: "Please choose a level." });
+      setFieldErrors({ class_level: "Please choose a class." });
       return;
     }
 
@@ -76,227 +90,140 @@ export function ApplyForm() {
     setSubmitting(true);
     try {
       await postApplication(payload);
-      setSuccess({ guardianName: payload.guardian_name });
+      setDoneFor(payload.guardian_name);
       setForm(INITIAL);
+      window.scrollTo({ top: 0 });
     } catch (err) {
       if (err instanceof ApiError) {
-        const fieldMap: Record<string, string> = {};
+        const map: Record<string, string> = {};
         for (const fe of err.fieldErrors) {
-          if (fe.field) fieldMap[fe.field] = fe.message;
+          if (fe.field) map[fe.field] = fe.message;
         }
-        setFieldErrors(fieldMap);
-        setTopError(err.message);
+        setFieldErrors(map);
+        if (map.message) setShowNote(true);
+        setTopError(
+          err.status === 422 ? "Please check the boxes marked in red." : err.message,
+        );
       } else {
-        setTopError("Something unexpected happened. Please try again.");
+        setTopError("Something went wrong. Please try again.");
       }
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (success) {
+  if (doneFor) {
     return (
-      <article
+      <section
         role="status"
-        className="bg-card border border-line rounded-lg p-8 text-center"
+        className="rounded-card border border-line bg-card px-5 py-10 text-center shadow-s"
       >
-        <div className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.22em] text-gold mb-3">
-          Application received
-        </div>
-        <h2 className="font-display text-paper text-[28px] mb-3">
-          Thank you, {success.guardianName}.
+        <span className="mx-auto mb-5 grid h-24 w-24 place-items-center rounded-full bg-success text-white motion-safe:animate-celebrate">
+          <Icon name="check" size={52} strokeWidth={3} />
+        </span>
+        <h2 className="font-display text-h3 font-bold text-ink sm:text-h2">
+          Thank you, {firstName(doneFor)}!
         </h2>
-        <p className="text-muted text-[16px] max-w-[520px] mx-auto mb-2">
-          Your application has been received. Our admissions team will be in
-          touch by email within 48 hours.
+        <p className="mx-auto mt-2 max-w-[40ch] text-label text-muted">
+          We&apos;ll call or WhatsApp you within 48 hours.
         </p>
-        <p className="text-muted text-[14px] max-w-[520px] mx-auto mb-6">
-          A confirmation email is on its way to the address you provided.
-        </p>
-        <button
-          type="button"
-          onClick={() => setSuccess(null)}
-          className="inline-flex items-center px-5 py-3 rounded-pill border border-line text-paper font-semibold hover:border-blue-bright transition"
-        >
-          Submit another application
-        </button>
-      </article>
+        <div className="mx-auto mt-6 flex max-w-[360px] flex-col gap-3">
+          <ButtonLink href="/pay" full>
+            Pay fees
+          </ButtonLink>
+          <ButtonLink href="/" variant="secondary" full>
+            Back to home
+          </ButtonLink>
+        </div>
+      </section>
     );
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      noValidate
-      className="bg-card border border-line rounded-lg p-6 sm:p-8 space-y-5"
-    >
-      {topError && (
-        <div
-          role="alert"
-          className="rounded-md border border-danger/40 bg-[rgba(210,74,74,0.10)] px-4 py-3 text-[14px] text-danger"
-        >
-          {topError}
-        </div>
-      )}
+    <form onSubmit={onSubmit} noValidate className="space-y-6">
+      {topError && <FormAlert>{topError}</FormAlert>}
 
-      <Field
+      <ChoiceTiles
+        name="class_level"
+        legend="Which class?"
+        options={LEVELS}
+        value={form.class_level}
+        onChange={(v) => update("class_level", v)}
+        error={fieldErrors.class_level}
+        grid
+      />
+
+      <TextField
         id="child_name"
         label="Child's name"
+        type="text"
+        required
+        autoComplete="off"
+        value={form.child_name}
+        onChange={(e) => update("child_name", e.target.value)}
         error={fieldErrors.child_name}
-      >
-        <input
-          id="child_name"
-          name="child_name"
-          type="text"
-          required
-          autoComplete="off"
-          value={form.child_name}
-          onChange={(e) => update("child_name", e.target.value)}
-          className={inputClass(!!fieldErrors.child_name)}
-        />
-      </Field>
+      />
 
-      <Field
+      <TextField
         id="guardian_name"
-        label="Parent or guardian's name"
+        label="Your name"
+        type="text"
+        required
+        autoComplete="name"
+        value={form.guardian_name}
+        onChange={(e) => update("guardian_name", e.target.value)}
         error={fieldErrors.guardian_name}
-      >
-        <input
-          id="guardian_name"
-          name="guardian_name"
-          type="text"
-          required
-          autoComplete="name"
-          value={form.guardian_name}
-          onChange={(e) => update("guardian_name", e.target.value)}
-          className={inputClass(!!fieldErrors.guardian_name)}
-        />
-      </Field>
+      />
 
-      <Field
+      <TextField
+        id="phone"
+        label="Phone (WhatsApp)"
+        type="tel"
+        inputMode="tel"
+        required
+        autoComplete="tel"
+        placeholder="0803 123 4567"
+        value={form.phone}
+        onChange={(e) => update("phone", e.target.value)}
+        error={fieldErrors.phone}
+        hint="We'll call or WhatsApp you on this number."
+      />
+
+      <TextField
         id="email"
         label="Email"
+        type="email"
+        inputMode="email"
+        required
+        autoComplete="email"
+        value={form.email}
+        onChange={(e) => update("email", e.target.value)}
         error={fieldErrors.email}
-        hint="We'll send a confirmation here."
-      >
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-          value={form.email}
-          onChange={(e) => update("email", e.target.value)}
-          className={inputClass(!!fieldErrors.email)}
-        />
-      </Field>
+        hint="We'll send a copy of your application here."
+      />
 
-      <Field
-        id="phone"
-        label="Phone"
-        error={fieldErrors.phone}
-        hint="Nigerian number, e.g. +234 703 591 8488 or 07035918488."
-      >
-        <input
-          id="phone"
-          name="phone"
-          type="tel"
-          required
-          autoComplete="tel"
-          value={form.phone}
-          onChange={(e) => update("phone", e.target.value)}
-          className={inputClass(!!fieldErrors.phone)}
-        />
-      </Field>
-
-      <Field
-        id="class_level"
-        label="Level applying for"
-        error={fieldErrors.class_level}
-      >
-        <select
-          id="class_level"
-          name="class_level"
-          required
-          value={form.class_level}
-          onChange={(e) =>
-            update("class_level", e.target.value as ClassLevel | "")
-          }
-          className={inputClass(!!fieldErrors.class_level)}
-        >
-          <option value="" disabled>
-            Choose a level…
-          </option>
-          {CLASS_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </Field>
-
-      <Field
-        id="message"
-        label="Message (optional)"
-        error={fieldErrors.message}
-      >
-        <textarea
+      {showNote ? (
+        <TextAreaField
           id="message"
-          name="message"
-          rows={4}
+          label="Your note"
+          optional
           value={form.message}
           onChange={(e) => update("message", e.target.value)}
-          className={inputClass(!!fieldErrors.message) + " resize-y"}
+          error={fieldErrors.message}
+          autoFocus
         />
-      </Field>
+      ) : (
+        <Button variant="ghost" onClick={() => setShowNote(true)} icon="sparkle">
+          Add a note
+        </Button>
+      )}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="inline-flex items-center px-5 py-3 rounded-pill bg-gradient-to-b from-blue to-blue-deep text-white font-semibold shadow-[0_10px_24px_-10px_rgba(31,99,201,0.55)] hover:from-blue-bright transition disabled:opacity-60 disabled:cursor-not-allowed"
-      >
-        {submitting ? "Submitting…" : "Submit application"}
-      </button>
+      {/* Sticky on phones so the button is always one thumb away. */}
+      <div className="sticky bottom-[calc(64px+env(safe-area-inset-bottom))] z-10 -mx-4 bg-page px-4 py-3 sm:-mx-6 sm:px-6 md:static md:mx-0 md:bg-transparent md:px-0 md:py-0">
+        <Button type="submit" size="lg" full loading={submitting}>
+          Apply now
+        </Button>
+      </div>
     </form>
-  );
-}
-
-function inputClass(hasError: boolean): string {
-  const base =
-    "w-full bg-page border rounded-md px-3 py-2.5 text-paper text-[15px] focus:outline-none transition";
-  if (hasError) {
-    return `${base} border-danger focus:border-danger focus:shadow-[0_0_0_3px_rgba(210,74,74,0.25)]`;
-  }
-  return `${base} border-line focus:border-blue-bright focus:shadow-[0_0_0_3px_rgba(47,127,212,0.25)]`;
-}
-
-function Field({
-  id,
-  label,
-  error,
-  hint,
-  children,
-}: {
-  id: string;
-  label: string;
-  error?: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-[13px] font-semibold text-paper">
-        {label}
-      </label>
-      {children}
-      {hint && !error && (
-        <p className="text-muted text-[12.5px]">{hint}</p>
-      )}
-      {error && (
-        <p className="text-danger text-[12.5px]" role="alert">
-          {error}
-        </p>
-      )}
-    </div>
   );
 }
