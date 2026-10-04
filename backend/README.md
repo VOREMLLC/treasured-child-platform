@@ -93,9 +93,10 @@ checkpoint / change / test / commit loop.
 
 The repo is a monorepo, so the backend is its own Railway service.
 
-1. New service from the GitHub repo → **Settings → Root Directory = `backend`**.
-   Railway then picks up `railway.json` (start command, `alembic upgrade head`
-   as pre-deploy, `/healthz` healthcheck) and `.python-version` (3.12).
+1. New service from the GitHub repo. No Root Directory is needed: the root
+   `Dockerfile` + `railway.json` build the backend, run `alembic upgrade head`
+   as pre-deploy and healthcheck `/healthz`. (If Root Directory is set to
+   `backend`, `backend/railway.json` gives the same result via Railpack.)
 2. Add a **Postgres** service and set the backend variable
    `DATABASE_URL=${{Postgres.DATABASE_URL}}`. Railway's `postgresql://` URL is
    rewritten to the `postgresql+psycopg://` driver in `app/core/config.py`.
