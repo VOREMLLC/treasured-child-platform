@@ -103,6 +103,22 @@ class Settings(BaseSettings):
         description="Max tokens the tutor may generate per call.",
     )
 
+    # ---- Outbound email (SMTP; unset = not sent in production) ----
+    SMTP_HOST: str = Field(default="")
+    SMTP_PORT: int = Field(default=465, description="465 = SSL, 587 = STARTTLS.")
+    SMTP_USERNAME: str = Field(default="")
+    SMTP_PASSWORD: str = Field(default="")
+    EMAIL_FROM: str = Field(
+        default="",
+        description="From header, e.g. 'Treasured Child School <admissions@treasuredchildschool.com>'.",
+    )
+
+    # ---- Safeguarding (CLAUDE.md §7: distress must reach a human) ----
+    SAFEGUARDING_EMAIL: str = Field(
+        default="",
+        description="Inbox alerted when the AI tutor detects a learner in distress.",
+    )
+
     # ---- First admin (created by scripts.bootstrap_admin on deploy) ----
     BOOTSTRAP_ADMIN_EMAIL: str = Field(default="")
     BOOTSTRAP_ADMIN_PASSWORD: str = Field(default="")

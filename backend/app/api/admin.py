@@ -2,6 +2,7 @@
 
 S10: GET /admin/ping  — RBAC smoke test.
 S26: Applications queue, user management, course list, payments, KPIs.
+Safeguarding: tutor conversations flagged by the safety pipeline.
 
 All endpoints require role=admin. The role guard is the ONLY access
 control needed here — there is no per-resource ownership check because
@@ -18,6 +19,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import requires_role
 from app.db.session import get_db
+from app.models.agent_run import AgentRun
 from app.models.application import Application, ApplicationStatus
 from app.models.audit_log import AuditLog
 from app.models.course import Course
@@ -30,6 +32,7 @@ from app.schemas.admin import (
     AdminPaymentItem,
     AdminUserItem,
     ApplicationListItem,
+    FlaggedRunItem,
     ApplicationStatusUpdate,
     KPIResponse,
     UserStatusUpdate,
@@ -260,3 +263,37 @@ def get_kpis(
         weekly_active_learners=weekly_active_learners,
         course_completions=course_completions,
     )
+
+
+# ─────────────────────────────────────────────────────────────
+# Safeguarding queue
+# ─────────────────────────────────────────────────────────────
+
+
+@router.get("/flagged-runs", response_model=List[FlaggedRunItem])
+def list_flagged_runs(
+    _user: User = _admin,
+    db: Session = Depends(get_db),
+    limit: int = Query(default=100, ge=1, le=500),
+) -> List[FlaggedRunItem]:
+    """Tutor conversations the safety pipeline flagged, newest first."""
+    rows = (
+        db.query(AgentRun, User)
+        .outerjoin(User, User.id == AgentRun.learner_id)
+        .filter(AgentRun.flagged.is_(True))
+        .order_by(AgentRun.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        FlaggedRunItem(
+            id=run.id,
+            learner_id=run.learner_id,
+            learner_name=learner.name if learner else None,
+            learner_email=learner.email if learner else None,
+            input=run.input,
+            output=run.output,
+            created_at=run.created_at,
+        )
+        for run, learner in rows
+    ]

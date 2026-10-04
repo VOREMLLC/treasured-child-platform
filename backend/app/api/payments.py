@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -378,6 +379,13 @@ async def paystack_webhook(
     if not reference:
         return {"ok": True}
 
+    # The handler is async (it needs the raw body), but SQLAlchemy here is
+    # sync; running it inline would block every other request meanwhile.
+    await run_in_threadpool(_apply_webhook, reference, body, db)
+    return {"ok": True}
+
+
+def _apply_webhook(reference: str, body: dict[str, Any], db: Session) -> None:
     payment = (
         db.query(Payment).filter(Payment.reference == reference).one_or_none()
     )
@@ -385,8 +393,6 @@ async def paystack_webhook(
         # Paystack could replay an old event we never created a row for;
         # or it could be a delivery for a different tenant's reference.
         # Either way: acknowledge and move on.
-        return {"ok": True}
-
+        return
     _apply_paystack_result(payment, body, db)
     db.commit()
-    return {"ok": True}

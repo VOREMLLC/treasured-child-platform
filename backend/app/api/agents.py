@@ -31,12 +31,14 @@ from agents import tutor as tutor_agent
 from agents.guardrails import check_input, check_output
 from agents.tools import get_lesson_context
 from app.api.deps import get_current_user
+from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.db.session import get_db
 from app.models.agent_run import AgentRun
 from app.models.course import Lesson, Module
 from app.models.enrolment import Enrolment, EnrolmentStatus
 from app.models.user import User
+from app.services import email as email_service
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -125,6 +127,8 @@ def ask_tutor(
             tokens=0,
             flagged=input_result.distress,  # distress=True sets flagged
         )
+        if input_result.distress:
+            _alert_safeguarding(run, current_user)
         return TutorResponse(reply=input_result.safe_reply or "", run_id=run.id)
 
     # ── 2. LLM call ─────────────────────────────────────────
@@ -167,6 +171,29 @@ def ask_tutor(
     )
 
     return TutorResponse(reply=output_result.reply, run_id=run.id)
+
+
+def _alert_safeguarding(run: AgentRun, learner: User) -> None:
+    """Tell a human straight away that a learner may be in distress.
+
+    CLAUDE.md §7: distress must escalate to a person, not just a DB flag.
+    The child's words stay in the database (admin: GET /admin/flagged-runs);
+    the email carries only what the safeguarding lead needs to act.
+    """
+    to = settings.SAFEGUARDING_EMAIL or settings.ADMIN_EMAIL
+    print(f"[safeguarding] distress flagged run={run.id}", flush=True)
+    email_service.send_email(
+        to=to,
+        subject="Safeguarding alert: a learner may need help",
+        body=(
+            "The AI tutor detected a message suggesting a learner may be in "
+            "distress. Please follow up today.\n\n"
+            f"Learner: {learner.name or '(no name)'} <{learner.email}>\n"
+            f"Flagged at: {run.created_at:%d %b %Y, %H:%M} UTC\n"
+            f"Reference: {run.id}\n\n"
+            "Sign in as an admin to read the message (GET /admin/flagged-runs)."
+        ),
+    )
 
 
 def _log_run(

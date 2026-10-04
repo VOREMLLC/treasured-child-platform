@@ -91,3 +91,18 @@ class KPIResponse(BaseModel):
     total_enrolments: int
     weekly_active_learners: int
     course_completions: int
+
+
+# ─────────────────────────────────────────────────────────────
+# Safeguarding
+# ─────────────────────────────────────────────────────────────
+
+
+class FlaggedRunItem(BaseModel):
+    id: uuid.UUID
+    learner_id: Optional[uuid.UUID] = None
+    learner_name: Optional[str] = None
+    learner_email: Optional[str] = None
+    input: str
+    output: str
+    created_at: datetime

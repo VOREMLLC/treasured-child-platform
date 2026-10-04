@@ -43,6 +43,7 @@ An "agent" here = **system prompt + scoped context + a permissioned set of tools
 ## 3. Safety pipeline (every agent)
 `input → policy filter → agent (scoped tools) → output filter → log(AgentRun) → deliver`
 On any flag: block, log, and (for Tutor distress signals) surface a human-contact prompt.
+Distress also emails the safeguarding lead immediately (`SAFEGUARDING_EMAIL`, falling back to `ADMIN_EMAIL`) with the learner's name, account email and run reference, but not the child's message. Admins read flagged conversations at `GET /admin/flagged-runs`.
 
 ## 4. Why this is the "right environment"
 The model is fixed; the **environment** is the lever: correct context injection, least-privilege tools, human-in-the-loop on anything published or charged, hard-coded determinism for money/grades, and child-safety filters that cannot be prompted away. Build the environment right and a capable model produces safe, useful, accountable behaviour.

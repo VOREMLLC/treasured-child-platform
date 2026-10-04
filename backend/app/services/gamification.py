@@ -26,6 +26,7 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.gamification import Gamification
@@ -62,7 +63,12 @@ BADGE_COURSE_COMPLETE = "Course Complete"
 def _get_or_create(learner_id: uuid.UUID, db: Session) -> Gamification:
     """Return the learner's Gamification row, creating it if absent."""
     row = db.get(Gamification, learner_id)
-    if row is None:
+    if row is not None:
+        return row
+    # Concurrent first activity (lesson + quiz) can race to create the row;
+    # the savepoint keeps the caller's transaction alive if we lose.
+    sp = db.begin_nested()
+    try:
         row = Gamification(
             learner_id=learner_id,
             xp=0,
@@ -73,7 +79,13 @@ def _get_or_create(learner_id: uuid.UUID, db: Session) -> Gamification:
         )
         db.add(row)
         db.flush()
-    return row
+        sp.commit()
+        return row
+    except IntegrityError:
+        sp.rollback()
+        existing = db.get(Gamification, learner_id, populate_existing=True)
+        assert existing is not None
+        return existing
 
 
 def _update_streak(row: Gamification, today: date) -> None:

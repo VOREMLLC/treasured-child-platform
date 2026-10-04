@@ -456,10 +456,24 @@ def _issue_certificate_if_complete(
     if existing is not None:
         return existing.id
 
-    cert = Certificate(learner_id=learner_id, course_id=course_id)
-    db.add(cert)
-    db.flush()  # populate cert.id before commit
-    return cert.id
+    # Two final lessons finished at once can both reach here; the savepoint
+    # lets the loser fall back to the winner's row instead of a 500.
+    sp = db.begin_nested()
+    try:
+        cert = Certificate(learner_id=learner_id, course_id=course_id)
+        db.add(cert)
+        db.flush()  # populate cert.id before commit
+        sp.commit()
+        return cert.id
+    except IntegrityError:
+        sp.rollback()
+        winner = (
+            db.query(Certificate)
+            .filter(Certificate.learner_id == learner_id)
+            .filter(Certificate.course_id == course_id)
+            .one()
+        )
+        return winner.id
 
 
 # ─────────────────────────────────────────────────────────────
