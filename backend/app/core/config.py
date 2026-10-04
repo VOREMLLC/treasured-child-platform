@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import List
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -93,6 +93,20 @@ class Settings(BaseSettings):
         default=1024,
         description="Max tokens the tutor may generate per call.",
     )
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def _use_psycopg3_driver(cls, value: str) -> str:
+        """Point bare Postgres URLs at the psycopg (v3) driver.
+
+        Hosts such as Railway and Heroku hand out ``postgres://`` or
+        ``postgresql://`` URLs. SQLAlchemy maps those to psycopg2, which
+        is not installed, so the app would crash at boot.
+        """
+        for prefix in ("postgres://", "postgresql://"):
+            if value.startswith(prefix):
+                return "postgresql+psycopg://" + value[len(prefix):]
+        return value
 
 
 settings = Settings()

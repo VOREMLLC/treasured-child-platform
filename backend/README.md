@@ -88,3 +88,21 @@ pytest                       # all tests must pass
 
 See [`../HARDENING_RULES.md`](../HARDENING_RULES.md) for the full
 checkpoint / change / test / commit loop.
+
+## Deploy (Railway)
+
+The repo is a monorepo, so the backend is its own Railway service.
+
+1. New service from the GitHub repo → **Settings → Root Directory = `backend`**.
+   Railway then picks up `railway.json` (start command, `alembic upgrade head`
+   as pre-deploy, `/healthz` healthcheck) and `.python-version` (3.12).
+2. Add a **Postgres** service and set the backend variable
+   `DATABASE_URL=${{Postgres.DATABASE_URL}}`. Railway's `postgresql://` URL is
+   rewritten to the `postgresql+psycopg://` driver in `app/core/config.py`.
+3. Set the remaining variables from the root `.env.example` (`JWT_SECRET`,
+   Paystack keys, `ANTHROPIC_API_KEY`, `FRONTEND_URL`). `CORS_ORIGINS` must be
+   JSON, e.g. `["https://treasuredchildschool.com"]`.
+4. Generate a public domain under **Settings → Networking**.
+
+Without `DATABASE_URL` the app falls back to SQLite on the container disk,
+which is wiped on every redeploy.
