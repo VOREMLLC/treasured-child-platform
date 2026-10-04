@@ -91,19 +91,30 @@ checkpoint / change / test / commit loop.
 
 ## Deploy (Railway)
 
-The repo is a monorepo, so the backend is its own Railway service.
+One Railway project, three services: **Postgres**, **backend** (repo root),
+**website** (Root Directory `frontend`). The browser only talks to the
+website; it proxies `/api/*` to the backend, so auth cookies are
+first-party and no CORS setup is needed.
 
-1. New service from the GitHub repo. No Root Directory is needed: the root
-   `Dockerfile` + `railway.json` build the backend, run `alembic upgrade head`
-   as pre-deploy and healthcheck `/healthz`. (If Root Directory is set to
-   `backend`, `backend/railway.json` gives the same result via Railpack.)
-2. Add a **Postgres** service and set the backend variable
-   `DATABASE_URL=${{Postgres.DATABASE_URL}}`. Railway's `postgresql://` URL is
-   rewritten to the `postgresql+psycopg://` driver in `app/core/config.py`.
-3. Set the remaining variables from the root `.env.example` (`JWT_SECRET`,
-   Paystack keys, `ANTHROPIC_API_KEY`, `FRONTEND_URL`). `CORS_ORIGINS` must be
-   JSON, e.g. `["https://treasuredchildschool.com"]`.
-4. Generate a public domain under **Settings → Networking**.
+Backend service (no Root Directory; root `Dockerfile` + `railway.json`):
 
-Without `DATABASE_URL` the app falls back to SQLite on the container disk,
-which is wiped on every redeploy.
+| Variable | Value |
+|---|---|
+| `ENVIRONMENT` | `production` (enables Secure cookies; refuses placeholder secrets/SQLite) |
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` |
+| `JWT_SECRET` | 32+ random characters |
+| `PAYSTACK_SECRET_KEY` / `PAYSTACK_PUBLIC_KEY` | live keys from the Paystack dashboard |
+| `ANTHROPIC_API_KEY` | tutor key |
+| `FRONTEND_URL` | website URL (used in reset emails) |
+| `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` | first admin, created once on deploy (12+ char password) |
+
+Pre-deploy runs `alembic upgrade head` then `scripts.bootstrap_admin`.
+The healthcheck is `/readyz`, which queries the database, so a deploy
+with a broken database never replaces a working one.
+
+Website service: Root Directory `frontend`, variable
+`BACKEND_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}` (read at build
+time; redeploy the website if it changes).
+
+Paystack dashboard → Settings → API Keys & Webhooks: set the webhook URL
+to `https://<backend-domain>/payments/webhook/paystack`.

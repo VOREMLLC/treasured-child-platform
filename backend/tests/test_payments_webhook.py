@@ -252,3 +252,16 @@ def test_webhook_replayed_does_not_send_duplicate_receipt(
     _post_webhook(client, body)
     # Still exactly one — replay is idempotent on email too.
     assert len(email_service.get_outbox()) == 1
+
+
+def test_non_naira_charge_is_not_marked_success(db_session):
+    """A matching amount in the wrong currency must not grant access."""
+    from types import SimpleNamespace
+
+    from app.api.payments import _apply_paystack_result
+    from app.models.payment import PaymentStatus
+
+    payment = SimpleNamespace(amount_kobo=100_000, status=PaymentStatus.pending)
+    body = {"data": {"status": "success", "amount": 100_000, "currency": "USD"}}
+    _apply_paystack_result(payment, body, db_session)  # type: ignore[arg-type]
+    assert payment.status is PaymentStatus.failed

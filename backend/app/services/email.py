@@ -10,6 +10,8 @@ from __future__ import annotations
 import sys
 from typing import List, NamedTuple
 
+from app.core.config import settings
+
 
 class SentEmail(NamedTuple):
     to: str
@@ -22,6 +24,11 @@ _OUTBOX: List[SentEmail] = []
 
 def send_email(to: str, subject: str, body: str) -> None:
     """Send an email (stub: print + record)."""
+    if settings.is_production:
+        # Bodies carry reset links and minors' details; never log them, and
+        # don't grow an in-memory outbox in a long-running process.
+        print(f"[email stub] not sent: subject={subject!r}", flush=True, file=sys.stderr)
+        return
     print(
         f"\n--- EMAIL ---\nTo: {to}\nSubject: {subject}\n\n{body}\n--- END ---\n",
         flush=True,

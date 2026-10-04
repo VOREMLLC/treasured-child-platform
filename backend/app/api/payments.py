@@ -129,6 +129,7 @@ def _apply_paystack_result(
         paystack_status == "success"
         and isinstance(paystack_amount, int)
         and paystack_amount == payment.amount_kobo
+        and data.get("currency") == "NGN"
     ):
         payment.status = PaymentStatus.success
         _send_receipt(payment, db)

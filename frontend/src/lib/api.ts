@@ -1,13 +1,38 @@
 /**
  * Typed wrapper around the backend REST API.
  *
- * `API_BASE` defaults to `http://localhost:8000` for local dev. Override
- * by setting `NEXT_PUBLIC_API_BASE_URL` in `frontend/.env.local` or at
- * the hosting provider for production.
+ * Calls go to `/api/*` on this same site; `next.config.mjs` proxies them
+ * to the backend (`BACKEND_URL`). Same-origin keeps the httpOnly auth
+ * cookies first-party, so login works whatever domains the two services
+ * end up on.
  */
 
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+export const API_BASE = "/api";
+
+const NETWORK_ERROR = "Could not reach the server. Please check your connection.";
+
+/**
+ * Fetch with cookies; on a 401 refresh the session once and retry.
+ * Access tokens live 15 minutes, so without this a learner mid-lesson
+ * would be bounced to sign-in.
+ */
+async function send(path: string, init: RequestInit): Promise<Response> {
+  const go = () => fetch(`${API_BASE}${path}`, { ...init, credentials: "include" });
+  let res: Response;
+  try {
+    res = await go();
+    if (res.status === 401 && !path.startsWith("/auth/")) {
+      const refreshed = await fetch(`${API_BASE}/auth/refresh`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (refreshed.ok) res = await go();
+    }
+  } catch {
+    throw new ApiError(0, [], NETWORK_ERROR);
+  }
+  return res;
+}
 
 // ─────────────────────────────────────────────────────────────
 // Error shape (shared)
@@ -43,19 +68,7 @@ interface ErrorBody {
  * by every authenticated read endpoint helper below.
  */
 async function getJson<T>(path: string): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}${path}`, {
-      method: "GET",
-      credentials: "include",
-    });
-  } catch {
-    throw new ApiError(
-      0,
-      [],
-      "Could not reach the server. Please check your connection.",
-    );
-  }
+  const res = await send(path, { method: "GET" });
 
   if (res.status >= 200 && res.status < 300) {
     return (await res.json()) as T;
@@ -73,30 +86,14 @@ async function getJson<T>(path: string): Promise<T> {
 
 /**
  * Internal: POST JSON, expect a 2xx, parse errors into ApiError. Used
- * by every public endpoint helper below.
- *
- * `credentials: "include"` is required so the browser:
- *   1. Accepts Set-Cookie from cross-origin responses (e.g. /auth/login
- *      setting access_token + refresh_token on :8000 → :3000).
- *   2. Sends those cookies back on subsequent requests.
- * The backend's CORS middleware already has allow_credentials=True.
+ * by every endpoint helper below that sends a body.
  */
 async function postJson<T>(path: string, body: unknown): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-      credentials: "include",
-    });
-  } catch {
-    throw new ApiError(
-      0,
-      [],
-      "Could not reach the server. Please check your connection.",
-    );
-  }
+  const res = await send(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 
   if (res.status >= 200 && res.status < 300) {
     return (await res.json()) as T;

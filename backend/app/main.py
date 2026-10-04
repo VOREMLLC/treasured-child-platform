@@ -8,7 +8,9 @@ trivial liveness probe.
 
 from __future__ import annotations
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -16,6 +18,7 @@ from slowapi.errors import RateLimitExceeded
 from app.api import admin, agents, applications, auth, courses, enrolments, me, payments, quizzes
 from app.core.config import settings
 from app.core.rate_limit import limiter
+from app.db.session import get_db
 
 app = FastAPI(
     title="Treasured Child Platform — Backend",
@@ -61,4 +64,15 @@ def healthz() -> dict:
     Returns ``{"ok": true}`` if the process is running. Used by uptime
     monitoring and by automated tests as a smoke check.
     """
+    return {"ok": True}
+
+
+@app.get("/readyz")
+def readyz(db: Session = Depends(get_db)) -> dict:
+    """Readiness probe: proves the database is reachable.
+
+    Railway's deploy healthcheck uses this, so a deploy with a missing or
+    broken ``DATABASE_URL`` never replaces a working one.
+    """
+    db.execute(text("SELECT 1"))
     return {"ok": True}

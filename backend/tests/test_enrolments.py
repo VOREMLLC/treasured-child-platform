@@ -430,6 +430,7 @@ def test_webhook_success_auto_creates_enrolment(
             "reference": "TCS-webhook-enrol",
             "status": "success",
             "amount": 3_500_000,
+            "currency": "NGN",
         },
     }
     body_bytes = json.dumps(payload).encode()
@@ -484,6 +485,7 @@ def test_webhook_idempotent_does_not_double_enrol(
             "reference": "TCS-webhook-idempotent",
             "status": "success",
             "amount": 3_500_000,
+            "currency": "NGN",
         },
     }
     body_bytes = json.dumps(payload).encode()

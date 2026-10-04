@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import List
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +27,15 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=True,
+    )
+
+    # ---- Environment ----
+    ENVIRONMENT: str = Field(
+        default="development",
+        description=(
+            "'production' turns on Secure cookies and refuses to boot with "
+            "placeholder secrets or SQLite."
+        ),
     )
 
     # ---- Database ----
@@ -93,6 +102,34 @@ class Settings(BaseSettings):
         default=1024,
         description="Max tokens the tutor may generate per call.",
     )
+
+    # ---- First admin (created by scripts.bootstrap_admin on deploy) ----
+    BOOTSTRAP_ADMIN_EMAIL: str = Field(default="")
+    BOOTSTRAP_ADMIN_PASSWORD: str = Field(default="")
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT.lower() == "production"
+
+    @model_validator(mode="after")
+    def _refuse_unsafe_production_config(self) -> "Settings":
+        """Fail at boot rather than run production with forgeable secrets.
+
+        A default JWT secret lets anyone mint an admin token; a default
+        Paystack key lets anyone sign a fake ``charge.success`` webhook.
+        """
+        if not self.is_production:
+            return self
+        problems: List[str] = []
+        if self.DATABASE_URL.startswith("sqlite"):
+            problems.append("DATABASE_URL must point at Postgres, not SQLite")
+        if self.JWT_SECRET == "change-me-in-production" or len(self.JWT_SECRET) < 32:
+            problems.append("JWT_SECRET must be a random string of 32+ characters")
+        if self.PAYSTACK_SECRET_KEY in ("", "sk_test_xxx"):
+            problems.append("PAYSTACK_SECRET_KEY is unset")
+        if problems:
+            raise ValueError("Unsafe production config: " + "; ".join(problems))
+        return self
 
     @field_validator("DATABASE_URL")
     @classmethod

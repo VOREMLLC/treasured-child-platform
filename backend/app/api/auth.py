@@ -9,7 +9,8 @@ Currently exposed:
 
 Login / logout / refresh use httpOnly cookies so the JS layer can never
 read the JWTs. SameSite=lax mitigates most CSRF; production also turns
-on Secure (set ``COOKIE_SECURE`` to True in the environment).
+on Secure (``ENVIRONMENT=production``). The frontend proxies ``/api`` to
+this service, so the cookies are first-party and Lax is sufficient.
 """
 
 import uuid
@@ -133,7 +134,7 @@ def _set_auth_cookies(
         value=access_token,
         httponly=True,
         samesite="lax",
-        secure=False,  # TODO production: flip to True via env-driven flag
+        secure=settings.is_production,
         max_age=settings.JWT_ACCESS_TTL_MIN * 60,
         path="/",
     )
@@ -142,7 +143,7 @@ def _set_auth_cookies(
         value=refresh_token,
         httponly=True,
         samesite="lax",
-        secure=False,
+        secure=settings.is_production,
         max_age=settings.JWT_REFRESH_TTL_DAYS * 24 * 60 * 60,
         path="/",
     )
