@@ -88,9 +88,13 @@ async function getJson<T>(path: string): Promise<T> {
  * Internal: POST JSON, expect a 2xx, parse errors into ApiError. Used
  * by every endpoint helper below that sends a body.
  */
-async function postJson<T>(path: string, body: unknown): Promise<T> {
+async function postJson<T>(
+  path: string,
+  body: unknown,
+  method: "POST" | "PATCH" = "POST",
+): Promise<T> {
   const res = await send(path, {
-    method: "POST",
+    method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -469,4 +473,75 @@ export interface TutorResponse {
 
 export function postTutorAsk(payload: TutorRequest): Promise<TutorResponse> {
   return postJson<TutorResponse>("/agents/tutor", payload);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Admin (role=admin only; the backend enforces it)
+// ─────────────────────────────────────────────────────────────
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  status: UserStatus;
+  created_at: string;
+}
+
+export interface AdminApplication {
+  id: string;
+  child_name: string;
+  guardian_name: string;
+  email: string;
+  phone: string;
+  class_level: ClassLevel;
+  message: string | null;
+  status: ApplicationStatus;
+  created_at: string;
+}
+
+export interface AdminPayment {
+  id: string;
+  payer_email: string;
+  reference: string;
+  amount_kobo: number;
+  purpose: PaymentPurpose;
+  target: string | null;
+  status: PaymentStatus;
+  created_at: string;
+}
+
+export interface AdminKpis {
+  total_revenue_kobo: number;
+  total_enrolments: number;
+  weekly_active_learners: number;
+  course_completions: number;
+}
+
+export interface FlaggedRun {
+  id: string;
+  learner_id: string | null;
+  learner_name: string | null;
+  learner_email: string | null;
+  input: string;
+  output: string;
+  created_at: string;
+}
+
+export const getAdminUsers = () => getJson<AdminUser[]>("/admin/users");
+export const getAdminApplications = () =>
+  getJson<AdminApplication[]>("/admin/applications");
+export const getAdminPayments = () => getJson<AdminPayment[]>("/admin/payments");
+export const getAdminKpis = () => getJson<AdminKpis>("/admin/kpis");
+export const getFlaggedRuns = () => getJson<FlaggedRun[]>("/admin/flagged-runs");
+
+export function setUserStatus(id: string, status: UserStatus): Promise<AdminUser> {
+  return postJson<AdminUser>(`/admin/users/${id}`, { status }, "PATCH");
+}
+
+export function setApplicationStatus(
+  id: string,
+  status: ApplicationStatus,
+): Promise<AdminApplication> {
+  return postJson<AdminApplication>(`/admin/applications/${id}`, { status }, "PATCH");
 }

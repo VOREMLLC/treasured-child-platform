@@ -94,6 +94,11 @@ request that does not match a role + ownership rule is rejected.
   - Sign in → admin dashboard → courses → create / publish / archive.
   - Sign in → admin dashboard → payments → reconcile, export.
   - Sign in → admin dashboard → KPIs → revenue, enrolment, weekly-active learners, programme completions.
+- **Built in v1 (website `/admin`, "School office"; reached from the portal home):**
+  approve or switch off accounts (new sign-ups are `pending` until approved), move
+  applications through new → contacted → enrolled / not admitted, view payments,
+  view KPIs, read safety alerts (tutor runs flagged for distress). Course
+  authoring and payment export are not built yet.
 - **What they can do.**
   - Read and write across **every** module. The only constraint is the audit log: every sensitive action (role change, content publish, refund, manual access grant) writes an immutable `audit_log` row.
 - **What they cannot do.**

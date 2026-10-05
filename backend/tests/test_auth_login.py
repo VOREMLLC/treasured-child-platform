@@ -100,14 +100,29 @@ def test_login_with_unknown_email_returns_same_generic_401(client):
     assert response.json() == {"detail": "Invalid email or password."}
 
 
-def test_login_for_pending_user_returns_same_generic_401(client, pending_user):
+def test_login_for_pending_user_with_right_password_explains_approval(
+    client, pending_user
+):
     response = client.post(
         "/auth/login",
         json={"email": "pending@example.com", "password": "correct-password"},
     )
 
+    assert response.status_code == 403
+    assert "waiting for approval" in response.json()["detail"]
+    assert "access_token" not in response.cookies
+
+
+def test_login_for_pending_user_with_wrong_password_stays_generic(
+    client, pending_user
+):
+    """Status is only revealed to someone who already knows the password."""
+    response = client.post(
+        "/auth/login",
+        json={"email": "pending@example.com", "password": "wrong-password"},
+    )
+
     assert response.status_code == 401
-    # Identical message — don't leak that the account exists but isn't active.
     assert response.json() == {"detail": "Invalid email or password."}
 
 

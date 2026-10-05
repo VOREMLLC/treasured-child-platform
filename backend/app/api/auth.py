@@ -178,8 +178,20 @@ def login(
     if not verify_password(user.password_hash, payload.password):
         raise _GENERIC_LOGIN_FAILURE
 
+    # Only reached with the correct password, so naming the status leaks
+    # nothing to a guesser; a generic "wrong password" here made approved-
+    # pending parents retype a correct password over and over.
+    if user.status is UserStatus.pending:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is waiting for approval by the school. "
+            "We will let you know as soon as it is ready.",
+        )
     if user.status is not UserStatus.active:
-        raise _GENERIC_LOGIN_FAILURE
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account is switched off. Please contact the school.",
+        )
 
     access = create_access_token(user.id)
     refresh = create_refresh_token(user.id)

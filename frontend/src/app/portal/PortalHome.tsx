@@ -64,6 +64,14 @@ export function PortalHome() {
         {isLearner ? "Ready to learn something new?" : "What would you like to do today?"}
       </p>
 
+      {user.role === "admin" && (
+        <div className="mt-6">
+          <ButtonLink href="/admin" icon="school" size="lg">
+            Open the school office
+          </ButtonLink>
+        </div>
+      )}
+
       {isLearner && dash ? (
         <LearnerView dash={dash} courses={courses} />
       ) : (
