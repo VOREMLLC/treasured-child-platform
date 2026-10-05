@@ -14,5 +14,7 @@ RUN pip install -r requirements.txt
 COPY backend/ .
 
 # Railway injects $PORT; default to 8000 for local `docker run`.
+# Migrate and bootstrap the first admin on every start (both idempotent),
+# so the schema never depends on the platform's pre-deploy hook running.
 # --proxy-headers: trust Railway's edge for the real scheme and client IP.
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips '*'"]
+CMD ["sh", "-c", "alembic upgrade head && python -m scripts.bootstrap_admin && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips '*'"]

@@ -69,10 +69,11 @@ def healthz() -> dict:
 
 @app.get("/readyz")
 def readyz(db: Session = Depends(get_db)) -> dict:
-    """Readiness probe: proves the database is reachable.
+    """Readiness probe: proves the database is reachable *and migrated*.
 
     Railway's deploy healthcheck uses this, so a deploy with a missing or
-    broken ``DATABASE_URL`` never replaces a working one.
+    broken ``DATABASE_URL``, or an unmigrated schema, never replaces a
+    working one. ``SELECT 1`` alone passed against an empty database.
     """
-    db.execute(text("SELECT 1"))
+    db.execute(text("SELECT 1 FROM users LIMIT 1"))
     return {"ok": True}

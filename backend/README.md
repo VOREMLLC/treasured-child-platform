@@ -111,7 +111,7 @@ Backend service (no Root Directory; root `Dockerfile` + `railway.json`):
 | `ADMIN_EMAIL` | admissions inbox for new-application alerts |
 | `SAFEGUARDING_EMAIL` | alerted when the AI tutor detects distress (falls back to `ADMIN_EMAIL`); messages are listed at `GET /admin/flagged-runs` |
 
-Pre-deploy runs `alembic upgrade head` then `scripts.bootstrap_admin`.
+Each start runs `alembic upgrade head` then `scripts.bootstrap_admin` (both idempotent) before uvicorn.
 The healthcheck is `/readyz`, which queries the database, so a deploy
 with a broken database never replaces a working one.
 
